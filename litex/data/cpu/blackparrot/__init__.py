@@ -1,6 +1,6 @@
 import os.path
 __dir__ = os.path.split(os.path.abspath(os.path.realpath(__file__)))[0]
-data_location = os.path.join(__dir__, "verilog")
+data_location = os.path.join(__dir__, "system_verilog")
 src = "https://github.com/enjoy-digital/black-parrot.git"
 
 # Module version
