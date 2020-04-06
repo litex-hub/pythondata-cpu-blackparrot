@@ -1,2 +1,2 @@
-graft litex/data/cpu/blackparrot/verilog/
+graft litex/data/cpu/blackparrot/system_verilog/
 global-exclude *.py[cod]
