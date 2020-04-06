@@ -19,7 +19,7 @@ with open(os.path.join(litex.data.cpu.blackparrot.location, my_data_file)) as f:
 
 The data files come from https://github.com/enjoy-digital/black-parrot.git
 and are imported using `git subtrees` to the directory
-[litex/data/cpu/blackparrot/verilog](litex/data/cpu/blackparrot/verilog].
+[litex/data/cpu/blackparrot/verilog](litex/data/cpu/blackparrot/verilog).
 
 
 
