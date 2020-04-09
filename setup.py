@@ -3,17 +3,18 @@ import setuptools
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-from litex.data.cpu.blackparrot import version_str
+from pythondata_cpu_blackparrot import version_str
 
 setuptools.setup(
-    name="litex-data-cpu-blackparrot",
+    name="pythondata-cpu-blackparrot",
     version=version_str,
     author="LiteX Authors",
     author_email="litex@googlegroups.com",
-    description="Python module containing data files for using the BlackParrot cpu with LiteX.",
+    description="""\
+Python module containing system_verilog files for BlackParrot cpu.""",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/litex-hub/litex-data-cpu-blackparrot",
+    url="https://github.com/litex-hub/pythondata-cpu-blackparrot",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: BSD License",
@@ -22,6 +23,12 @@ setuptools.setup(
     python_requires='>=3.5',
     zip_safe=False,
     packages=setuptools.find_packages(),
-    package_data={'litex.data.cpu.blackparrot': ['litex/data/cpu/blackparrot/system_verilog/**']},
+    package_data={
+    	'cpu_blackparrot': ['cpu_blackparrot/system_verilog/**'],
+    },
     include_package_data=True,
+    project_urls={
+        "Bug Tracker": "https://github.com/litex-hub/pythondata-cpu-blackparrot/issues",
+        "Source Code": "https://github.com/litex-hub/pythondata-cpu-blackparrot",
+    },
 )
