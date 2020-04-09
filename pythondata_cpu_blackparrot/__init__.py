@@ -4,11 +4,11 @@ data_location = os.path.join(__dir__, "system_verilog")
 src = "https://github.com/enjoy-digital/black-parrot.git"
 
 # Module version
-version_str = "0.0.post1794"
-version_tuple = (0, 0, 1794)
+version_str = "0.0.post1795"
+version_tuple = (0, 0, 1795)
 try:
     from packaging.version import Version as V
-    pversion = V("0.0.post1794")
+    pversion = V("0.0.post1795")
 except ImportError:
     pass
 
@@ -32,11 +32,11 @@ Date:   Sun Feb 9 19:44:22 2020 +0100
 """
 
 # Tool version info
-tool_version_str = "0.0.post48"
-tool_version_tuple = (0, 0, 48)
+tool_version_str = "0.0.post49"
+tool_version_tuple = (0, 0, 49)
 try:
     from packaging.version import Version as V
-    ptool_version = V("0.0.post48")
+    ptool_version = V("0.0.post49")
 except ImportError:
     pass
 
