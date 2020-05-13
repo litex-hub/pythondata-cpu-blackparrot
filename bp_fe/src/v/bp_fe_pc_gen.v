@@ -32,12 +32,10 @@ module bp_fe_pc_gen
 
    , input [mem_resp_width_lp-1:0]                   mem_resp_i
    , input                                           mem_resp_v_i
-   , output                                          mem_resp_ready_o
 
    , input [fe_cmd_width_lp-1:0]                     fe_cmd_i
    , input                                           fe_cmd_v_i
    , output                                          fe_cmd_yumi_o
-   , output                                          fe_cmd_processed_o
 
    , output [fe_queue_width_lp-1:0]                  fe_queue_o
    , output                                          fe_queue_v_o
@@ -136,7 +134,7 @@ wire flush          = fe_exception_v | icache_miss | queue_miss | cmd_nonattaboy
 wire fe_instr_v     = v_if2 & mem_resp_v_i & ~flush;
 
 // FSM
-enum bit [1:0] {e_wait=2'd0, e_run, e_stall} state_n, state_r;
+enum logic [1:0] {e_wait=2'd0, e_run, e_stall} state_n, state_r;
 
 // Decoded state signals
 wire is_wait  = (state_r == e_wait);
@@ -178,6 +176,7 @@ always_comb
     default: state_n = e_wait;
   endcase
 
+// synopsys sync_set_reset "reset_i"
 always_ff @(posedge clk_i)
   if (reset_i)
       state_r <= e_wait;
@@ -321,7 +320,12 @@ always_comb
   begin
     mem_cmd_cast_o = '0;
 
-    if (itlb_fence_v)
+    if (icache_fence_v)
+      begin
+        mem_cmd_cast_o.op                   = e_fe_op_icache_fence;
+        mem_cmd_cast_o.operands.fetch.vaddr = fe_cmd_cast_i.vaddr;
+      end
+    else if (itlb_fence_v)
       begin
         mem_cmd_cast_o.op                   = e_fe_op_tlb_fence;
         mem_cmd_cast_o.operands.fetch.vaddr = fe_cmd_cast_i.vaddr;
@@ -339,15 +343,12 @@ always_comb
       end
   end
 
-assign mem_poison_o         = pc_gen_stage_r[0].v & ~pc_gen_stage_n[1].v;
+assign mem_poison_o         = ~pc_gen_stage_n[1].v;
 assign mem_priv_o           = shadow_priv_w ? shadow_priv_n : shadow_priv_r;
 assign mem_translation_en_o = shadow_translation_en_w ? shadow_translation_en_n : shadow_translation_en_r;
 
-assign mem_resp_ready_o = 1'b1;
-
 // Handshaking signals
-assign fe_cmd_yumi_o      = fe_cmd_v_i; // Always accept FE commands
-assign fe_cmd_processed_o = fe_cmd_yumi_o; // All FE cmds are processed in 1 cycle, for now
+assign fe_cmd_yumi_o = attaboy_v | (fe_cmd_v_i & mem_cmd_yumi_i);
 
 // Organize the FE queue message
 assign fe_queue_v_o = fe_queue_ready_i & (fe_instr_v | fe_exception_v);
