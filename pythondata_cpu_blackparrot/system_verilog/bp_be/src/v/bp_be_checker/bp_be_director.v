@@ -50,11 +50,12 @@ module bp_be_director
    , output [fe_cmd_width_lp-1:0]     fe_cmd_o
    , output                           fe_cmd_v_o
    , input                            fe_cmd_ready_i
+   , input                            fe_cmd_fence_i
+
+   , output                           suppress_iss_o
 
    , input [commit_pkt_width_lp-1:0]  commit_pkt_i
    , input [trap_pkt_width_lp-1:0]    trap_pkt_i
-   , input                            tlb_fence_i
-   , input                            fencei_i
    
    //iTLB fill interface
    , input                            itlb_fill_v_i
@@ -91,7 +92,7 @@ logic [vaddr_width_p-1:0]               npc_n, npc_r, pc_r;
 logic                                   npc_mismatch_v;
 
 // Logic for handling coming out of reset
-enum bit [1:0] {e_reset, e_boot, e_run} state_n, state_r;
+enum logic [1:0] {e_reset, e_boot, e_run, e_fence} state_n, state_r;
 
 // Control signals
 logic npc_w_v, attaboy_pending;
@@ -105,7 +106,7 @@ assign npc_w_v = cfg_bus_cast_i.npc_w_v
                  | (commit_pkt.tlb_miss | commit_pkt.cache_miss)
                  | (trap_pkt.exception | trap_pkt._interrupt | trap_pkt.eret);
 bsg_dff_reset_en 
- #(.width_p(vaddr_width_p))
+ #(.width_p(vaddr_width_p), .reset_val_p(32'h7000_0000))
  npc
   (.clk_i(clk_i)
    ,.reset_i(reset_i)
@@ -179,13 +180,15 @@ wire last_instr_was_branch = attaboy_pending | calc_status.ex1_br_or_jmp;
 //   Currently, we just don't send pc redirects under a cache miss.
 assign expected_npc_o = npc_w_v ? npc_n : npc_r;
 
+wire fe_cmd_nonattaboy_v = fe_cmd_v_o & (fe_cmd.opcode != e_op_attaboy);
 // Boot logic 
 always_comb
   begin
     unique casez (state_r)
       e_reset : state_n = cfg_bus_cast_i.freeze ? e_reset : e_boot;
       e_boot  : state_n = fe_cmd_v ? e_run : e_boot;
-      e_run   : state_n = cfg_bus_cast_i.freeze ? e_reset : e_run;
+      e_run   : state_n = cfg_bus_cast_i.freeze ? e_reset : fe_cmd_nonattaboy_v ? e_fence : e_run;
+      e_fence : state_n = fe_cmd_fence_i ? e_fence : e_run;
       default : state_n = e_reset;
     endcase
   end
@@ -198,6 +201,8 @@ always_ff @(posedge clk_i)
     begin
       state_r <= state_n;
     end
+
+assign suppress_iss_o = (state_r == e_fence) & fe_cmd_fence_i;
 
 // Flush on FE cmds which are not attaboys.  Also don't flush the entire pipeline on a mispredict.
 always_comb 
@@ -229,7 +234,7 @@ always_comb
 
         flush_o = 1'b1;
       end
-    else if (tlb_fence_i)
+    else if (trap_pkt.sfence)
       begin
         fe_cmd.opcode = e_op_itlb_fence;
         fe_cmd.vaddr  = commit_pkt.npc;
@@ -242,7 +247,7 @@ always_comb
 
         flush_o = 1'b1;
       end
-    else if (fencei_i)
+    else if (trap_pkt.fencei)
       begin
         fe_cmd.opcode = e_op_icache_fence;
         fe_cmd.vaddr  = commit_pkt.npc;
