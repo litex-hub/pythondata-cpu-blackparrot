@@ -4,30 +4,33 @@ data_location = os.path.join(__dir__, "system_verilog")
 src = "https://github.com/enjoy-digital/black-parrot.git"
 
 # Module version
-version_str = "0.0.post1797"
-version_tuple = (0, 0, 1797)
+version_str = "0.0.post1799"
+version_tuple = (0, 0, 1799)
 try:
     from packaging.version import Version as V
-    pversion = V("0.0.post1797")
+    pversion = V("0.0.post1799")
 except ImportError:
     pass
 
 # Data version info
-data_version_str = "0.0.post1746"
-data_version_tuple = (0, 0, 1746)
+data_version_str = "0.0.post1748"
+data_version_tuple = (0, 0, 1748)
 try:
     from packaging.version import Version as V
-    pdata_version = V("0.0.post1746")
+    pdata_version = V("0.0.post1748")
 except ImportError:
     pass
-data_git_hash = "dbb13f31370a743633dc94d3639d55c8c4d74e1d"
-data_git_describe = "v0.0-1746-gdbb13f31"
+data_git_hash = "30b599caed3c2b26450914901f5bf99a1fbd17ff"
+data_git_describe = "v0.0-1748-g30b599ca"
 data_git_msg = """\
-commit dbb13f31370a743633dc94d3639d55c8c4d74e1d
-Author: Florent Kermarrec <florent@enjoy-digital.fr>
-Date:   Sun Feb 9 19:44:22 2020 +0100
+commit 30b599caed3c2b26450914901f5bf99a1fbd17ff
+Merge: dbb13f31 34fbb75c
+Author: enjoy-digital <florent@enjoy-digital.fr>
+Date:   Wed May 13 08:06:45 2020 +0200
 
-    remove submodules
+    Merge pull request #1 from scanakci/master
+    
+    update source files and organize repo
 
 """
 
