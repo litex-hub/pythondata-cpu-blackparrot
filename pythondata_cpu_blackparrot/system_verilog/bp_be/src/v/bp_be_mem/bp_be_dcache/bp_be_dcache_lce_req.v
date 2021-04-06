@@ -28,16 +28,21 @@ module bp_be_dcache_lce_req
  #(parameter bp_params_e bp_params_p = e_bp_inv_cfg
    `declare_bp_proc_params(bp_params_p)
    `declare_bp_lce_cce_if_widths(cce_id_width_p, lce_id_width_p, paddr_width_p, lce_assoc_p, dword_width_p, cce_block_width_p)
-   `declare_bp_cache_service_if_widths(paddr_width_p, ptag_width_p, lce_sets_p, lce_assoc_p, dword_width_p, cce_block_width_p)
+   `declare_bp_cache_service_if_widths(paddr_width_p, ptag_width_p, dcache_sets_p, dcache_assoc_p, dword_width_p, dcache_block_width_p, dcache)
      
-    , localparam block_size_in_words_lp=lce_assoc_p
-    , localparam byte_offset_width_lp=`BSG_SAFE_CLOG2(dword_width_p>>3)
-    , localparam word_offset_width_lp=`BSG_SAFE_CLOG2(block_size_in_words_lp)
-    , localparam block_offset_width_lp=(word_offset_width_lp+byte_offset_width_lp)
-    , localparam way_id_width_lp=`BSG_SAFE_CLOG2(lce_assoc_p)
-    , localparam data_mask_width_lp=(dword_width_p>>3)
-    , localparam index_width_lp=`BSG_SAFE_CLOG2(lce_sets_p)
-    , localparam tag_width_lp=(paddr_width_p-block_offset_width_lp-index_width_lp)
+    , localparam cfg_bus_width_lp= `bp_cfg_bus_width(vaddr_width_p, core_id_width_p, cce_id_width_p, lce_id_width_p, cce_pc_width_p, cce_instr_width_p)
+    , localparam block_size_in_words_lp = dcache_assoc_p
+    , localparam bank_width_lp = dcache_block_width_p / dcache_assoc_p
+    , localparam num_dwords_per_bank_lp = bank_width_lp / dword_width_p
+    , localparam bypass_data_mask_width_lp = (dword_width_p >> 3)
+    , localparam data_mem_mask_width_lp = (bank_width_lp >> 3)
+    , localparam byte_offset_width_lp = `BSG_SAFE_CLOG2(bank_width_lp>>3)
+    , localparam word_offset_width_lp = `BSG_SAFE_CLOG2(block_size_in_words_lp)
+    , localparam block_offset_width_lp = (word_offset_width_lp+byte_offset_width_lp)
+    , localparam index_width_lp = `BSG_SAFE_CLOG2(dcache_sets_p)
+    , localparam ptag_width_lp = (paddr_width_p-bp_page_offset_width_gp)
+    , localparam way_id_width_lp = `BSG_SAFE_CLOG2(dcache_assoc_p)
+    , localparam block_size_in_bytes_lp = (dcache_block_width_p / 8)
 
     , parameter timeout_max_limit_p=4
 
@@ -48,20 +53,20 @@ module bp_be_dcache_lce_req
 
     , input [lce_id_width_p-1:0] lce_id_i
 
-    , input [cache_req_width_lp-1:0] cache_req_i
+    , input [dcache_req_width_lp-1:0] cache_req_i
     , input cache_req_v_i
     , output logic cache_req_ready_o
-    , input [cache_req_metadata_width_lp-1:0] cache_req_metadata_i
+    , input [dcache_req_metadata_width_lp-1:0] cache_req_metadata_i
     , input cache_req_metadata_v_i
 
     , output logic [paddr_width_p-1:0] miss_addr_o
 
     , input coherence_blocked_i
     , input cmd_ready_i
+    , input credits_ready_i
 
     , input cce_data_received_i
     , input uncached_data_received_i
-    , input set_tag_received_i
     , input set_tag_wakeup_received_i
 
     , output logic [lce_cce_req_width_lp-1:0] lce_req_o
@@ -76,7 +81,7 @@ module bp_be_dcache_lce_req
   // casting struct
   //
   `declare_bp_lce_cce_if(cce_id_width_p, lce_id_width_p, paddr_width_p, lce_assoc_p, dword_width_p, cce_block_width_p)
-  `declare_bp_cache_service_if(paddr_width_p, ptag_width_p, lce_sets_p, lce_assoc_p, dword_width_p, cce_block_width_p);
+  `declare_bp_cache_service_if(paddr_width_p, ptag_width_p, dcache_sets_p, dcache_assoc_p, dword_width_p, dcache_block_width_p, dcache);
 
   bp_lce_cce_req_s lce_req;
   bp_lce_cce_resp_s lce_resp;
@@ -84,15 +89,15 @@ module bp_be_dcache_lce_req
   assign lce_req_o = lce_req;
   assign lce_resp_o = lce_resp;
 
-  bp_cache_req_s cache_req_cast_li;
-  bp_cache_req_metadata_s cache_req_metadata_cast_li;
+  bp_dcache_req_s cache_req_cast_li;
+  bp_dcache_req_metadata_s cache_req_metadata_cast_li;
 
   assign cache_req_cast_li = cache_req_i;
   assign cache_req_metadata_cast_li = cache_req_metadata_i;
 
-  bp_cache_req_metadata_s cache_req_metadata_r;
+  bp_dcache_req_metadata_s cache_req_metadata_r;
   bsg_dff_en_bypass
-   #(.width_p($bits(bp_cache_req_metadata_s)))
+   #(.width_p($bits(bp_dcache_req_metadata_s)))
    metadata_reg
     (.clk_i(clk_i)
 
@@ -129,15 +134,13 @@ module bp_be_dcache_lce_req
 
   logic load_not_store_r, load_not_store_n;
   logic [paddr_width_p-1:0] miss_addr_r, miss_addr_n;
-  logic [1:0] size_op_r, size_op_n;
+  bp_cache_req_size_e size_op_r, size_op_n;
 
   logic cce_data_received_r, cce_data_received_n, cce_data_received;
-  logic set_tag_received_r, set_tag_received_n, set_tag_received;
 
   // comb logic
   //
   assign cce_data_received = cce_data_received_r | cce_data_received_i;
-  assign set_tag_received = set_tag_received_r | set_tag_received_i;
   assign miss_addr_o = miss_addr_r;
 
   logic [cce_id_width_p-1:0] req_cce_id_lo;
@@ -158,6 +161,19 @@ module bp_be_dcache_lce_req
      ,.cce_id_o(resp_cce_id_lo)
      );
 
+  // coherence request size
+  // block size smaller than 8-bytes not supported
+  bp_mem_msg_size_e req_block_size =
+    (block_size_in_bytes_lp == 128)
+    ? e_mem_msg_size_128
+    : (block_size_in_bytes_lp == 64)
+      ? e_mem_msg_size_64
+      : (block_size_in_bytes_lp == 32)
+        ? e_mem_msg_size_32
+        : (block_size_in_bytes_lp == 16)
+          ? e_mem_msg_size_16
+          : e_mem_msg_size_8;
+
   always_comb begin
     state_n = state_r;
     load_not_store_n = load_not_store_r;
@@ -165,7 +181,6 @@ module bp_be_dcache_lce_req
     size_op_n = size_op_r;
     
     cce_data_received_n = cce_data_received_r;
-    set_tag_received_n = set_tag_received_r;
 
     lce_req_v_o = 1'b0;
 
@@ -197,7 +212,6 @@ module bp_be_dcache_lce_req
           miss_addr_n = cache_req_cast_li.addr;
           load_not_store_n = 1'b0; // We force a store miss to upgrade the block to exclusive
           cce_data_received_n = 1'b0;
-          set_tag_received_n = 1'b0;
 
           state_n = e_SEND_CACHED_REQ;
         end
@@ -205,15 +219,13 @@ module bp_be_dcache_lce_req
           miss_addr_n = cache_req_cast_li.addr;
           load_not_store_n = (cache_req_cast_li.msg_type == e_miss_load);
           cce_data_received_n = 1'b0;
-          set_tag_received_n = 1'b0;
  
           state_n = e_SEND_CACHED_REQ;
         end
         else if (cache_req_cast_li.msg_type == e_uc_load) begin
           miss_addr_n = cache_req_cast_li.addr;
-          size_op_n = bp_lce_cce_uc_req_size_e'(cache_req_cast_li.size);
+          size_op_n = cache_req_cast_li.size;
           cce_data_received_n = 1'b0;
-          set_tag_received_n = 1'b0;
  
           state_n = e_SEND_UNCACHED_LOAD_REQ;
         end
@@ -221,7 +233,7 @@ module bp_be_dcache_lce_req
           lce_req_v_o = lce_req_ready_i;
 
           lce_req.data = cache_req_cast_li.data[dword_width_p-1:0];;
-          lce_req.header.uc_size = bp_lce_cce_uc_req_size_e'(cache_req_cast_li.size);
+          lce_req.header.size = bp_mem_msg_size_e'(cache_req_cast_li.size);
           lce_req.header.addr = cache_req_cast_li.addr;
           lce_req.header.msg_type = e_lce_req_type_uc_wr;
           lce_req.header.src_id = lce_id_i;
@@ -240,9 +252,9 @@ module bp_be_dcache_lce_req
       e_SEND_CACHED_REQ: begin
         lce_req_v_o = lce_req_ready_i & cache_req_metadata_v_r;
 
-        lce_req.header.lru_dirty = bp_lce_cce_lru_dirty_e'(cache_req_metadata_r.dirty);
-        lce_req.header.lru_way_id = cache_req_metadata_r.repl_way;
+        lce_req.header.lru_way_id = lce_assoc_p'(cache_req_metadata_r.repl_way);
         lce_req.header.non_exclusive = e_lce_req_excl;
+        lce_req.header.size = req_block_size;
 
         lce_req.header.addr = miss_addr_r;
         lce_req.header.msg_type = load_not_store_r 
@@ -261,7 +273,7 @@ module bp_be_dcache_lce_req
         lce_req_v_o = lce_req_ready_i & cache_req_metadata_v_r;
 
         lce_req.data = '0;
-        lce_req.header.uc_size = bp_lce_cce_uc_req_size_e'(size_op_r);
+        lce_req.header.size = bp_mem_msg_size_e'(size_op_r);
         lce_req.header.addr = miss_addr_r;
         lce_req.header.msg_type = e_lce_req_type_uc_rd;
         lce_req.header.src_id = lce_id_i;
@@ -277,7 +289,6 @@ module bp_be_dcache_lce_req
       // wait for signals from other modules to wake up.
       e_SLEEP: begin
         cce_data_received_n = cce_data_received_i ? 1'b1 : cce_data_received_r;
-        set_tag_received_n = set_tag_received_i ? 1'b1 : set_tag_received_r;
 
         if (set_tag_wakeup_received_i) begin
           state_n = e_SEND_COH_ACK;
@@ -285,13 +296,8 @@ module bp_be_dcache_lce_req
         else if (uncached_data_received_i) begin
           state_n = e_READY;
         end
-        else if (set_tag_received) begin
-          if (cce_data_received) begin
-            state_n = e_SEND_COH_ACK;
-          end
-          else begin
-            state_n = e_SLEEP;
-          end
+        else if (cce_data_received) begin
+          state_n = e_SEND_COH_ACK;
         end
         else begin
           state_n = e_SLEEP;
@@ -323,14 +329,12 @@ module bp_be_dcache_lce_req
     if (reset_i) begin
       state_r <= e_READY;
       cce_data_received_r <= 1'b0;
-      set_tag_received_r <= 1'b0;
     end
     else begin
       state_r <= state_n;
       load_not_store_r <= load_not_store_n;
       miss_addr_r <= miss_addr_n;
       cce_data_received_r <= cce_data_received_n;
-      set_tag_received_r <= set_tag_received_n;
       size_op_r <= size_op_n;
     end
   end
@@ -358,15 +362,13 @@ module bp_be_dcache_lce_req
      );
   wire timeout = (timeout_cnt_r == timeout_max_limit_p);
 
-  assign cache_req_ready_o = cmd_ready_i & is_ready & ~timeout & lce_req_ready_i;
+  assign cache_req_ready_o = credits_ready_i & cmd_ready_i & is_ready & ~timeout & lce_req_ready_i;
 
   // synopsys translate_off
   always_ff @ (negedge clk_i) begin
     if (state_r == e_READY) begin
       assert(~cce_data_received_i)
         else $error("id: %0d, data_cmd received while no cache miss.", lce_id_i);
-      assert(~set_tag_received_i)
-        else $error("id: %0d, set_tag_cmd received while no cache miss.", lce_id_i);
       assert(~set_tag_wakeup_received_i)
         else $error("id: %0d, set_tag_wakeup_cmd received while no cache miss.", lce_id_i);
     end

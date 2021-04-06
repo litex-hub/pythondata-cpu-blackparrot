@@ -50,11 +50,12 @@ always_comb
     decode.instr_v       = 1'b1;
 
     // Destination pipe
-    decode.pipe_comp_v   = '0;
+    decode.pipe_ctrl_v   = '0;
     decode.pipe_int_v    = '0;
-    decode.pipe_mul_v    = '0;
     decode.pipe_mem_v    = '0;
+    decode.pipe_mul_v    = '0;
     decode.pipe_fp_v     = '0;
+    decode.pipe_long_v   = '0;
 
     // R/W signals
     decode.irf_w_v       = '0;
@@ -71,8 +72,6 @@ always_comb
 
     // Decode metadata
     decode.fp_not_int_v  = '0;
-    decode.jmp_v         = '0;
-    decode.br_v          = '0;
     decode.opw_v         = '0;
 
     // Decode control signals
@@ -88,8 +87,17 @@ always_comb
     unique casez (instr.opcode) 
       `RV64_OP_OP, `RV64_OP_32_OP : 
         begin
-          decode.pipe_int_v = 1'b1;
-          decode.irf_w_v    = 1'b1;
+          if (instr inside {`RV64_MUL, `RV64_MULW})
+            decode.pipe_mul_v = 1'b1;
+          else if (instr inside {`RV64_DIV, `RV64_DIVU, `RV64_DIVW, `RV64_DIVUW
+                                 ,`RV64_REM, `RV64_REMU, `RV64_REMW, `RV64_REMUW
+                                 })
+            decode.pipe_long_v = 1'b1;
+          else
+            decode.pipe_int_v = 1'b1;
+
+          // The writeback for long latency ops comes out of band
+          decode.irf_w_v    = ~decode.pipe_long_v;
           decode.opw_v      = (instr.opcode == `RV64_OP_32_OP);
           unique casez (instr)
             `RV64_ADD, `RV64_ADDW : decode.fu_op = e_int_op_add;
@@ -102,6 +110,12 @@ always_comb
             `RV64_XOR             : decode.fu_op = e_int_op_xor;
             `RV64_OR              : decode.fu_op = e_int_op_or;
             `RV64_AND             : decode.fu_op = e_int_op_and;
+
+            `RV64_MUL, `RV64_MULW   : decode.fu_op = e_mul_op_mul;
+            `RV64_DIV, `RV64_DIVW   : decode.fu_op = e_mul_op_div;
+            `RV64_DIVU, `RV64_DIVUW : decode.fu_op = e_mul_op_divu;
+            `RV64_REM, `RV64_REMW   : decode.fu_op = e_mul_op_rem;
+            `RV64_REMU, `RV64_REMUW : decode.fu_op = e_mul_op_remu;
             default : illegal_instr = 1'b1;
           endcase
 
@@ -150,37 +164,31 @@ always_comb
         end
       `RV64_JAL_OP : 
         begin
-          decode.pipe_int_v = 1'b1;
+          decode.pipe_ctrl_v = 1'b1;
           decode.irf_w_v    = 1'b1;
-          decode.jmp_v      = 1'b1;
+          decode.fu_op      = e_ctrl_op_jal;
           decode.baddr_sel  = e_baddr_is_pc;
-          decode.result_sel = e_result_from_pc_plus4;
         end
       `RV64_JALR_OP : 
         begin
-          decode.pipe_int_v = 1'b1;
+          decode.pipe_ctrl_v = 1'b1;
           decode.irf_w_v    = 1'b1;
-          decode.jmp_v      = 1'b1;
+          decode.fu_op      = e_ctrl_op_jalr;
           decode.baddr_sel  = e_baddr_is_rs1;
-          decode.result_sel = e_result_from_pc_plus4;
         end
       `RV64_BRANCH_OP : 
         begin
-          decode.pipe_int_v = 1'b1;
-          decode.br_v       = 1'b1;
+          decode.pipe_ctrl_v = 1'b1;
           unique casez (instr)
-            `RV64_BEQ  : decode.fu_op = e_int_op_eq;
-            `RV64_BNE  : decode.fu_op = e_int_op_ne;
-            `RV64_BLT  : decode.fu_op = e_int_op_slt; 
-            `RV64_BGE  : decode.fu_op = e_int_op_sge;
-            `RV64_BLTU : decode.fu_op = e_int_op_sltu;
-            `RV64_BGEU : decode.fu_op = e_int_op_sgeu;
+            `RV64_BEQ  : decode.fu_op = e_ctrl_op_beq;
+            `RV64_BNE  : decode.fu_op = e_ctrl_op_bne;
+            `RV64_BLT  : decode.fu_op = e_ctrl_op_blt;
+            `RV64_BGE  : decode.fu_op = e_ctrl_op_bge;
+            `RV64_BLTU : decode.fu_op = e_ctrl_op_bltu;
+            `RV64_BGEU : decode.fu_op = e_ctrl_op_bgeu;
             default : illegal_instr = 1'b1;
           endcase
-          decode.src1_sel   = e_src1_is_rs1;
-          decode.src2_sel   = e_src2_is_rs2;
           decode.baddr_sel  = e_baddr_is_pc;
-          decode.result_sel = e_result_from_alu;
         end
       `RV64_LOAD_OP : 
         begin
@@ -217,7 +225,7 @@ always_comb
           unique casez (instr)
             `RV64_FENCE   : 
               begin
-                decode.pipe_comp_v = 1'b1;
+                decode.pipe_mem_v = 1'b1;
               end
             `RV64_FENCE_I : 
               begin 

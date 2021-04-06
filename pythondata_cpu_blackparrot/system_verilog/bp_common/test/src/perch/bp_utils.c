@@ -1,6 +1,12 @@
 #include <stdint.h>
 #include "bp_utils.h"
 
+uint64_t bp_get_hart() {
+    uint64_t core_id;
+    __asm__ volatile("csrr %0, mhartid": "=r"(core_id): :);
+    return core_id;
+}
+
 void bp_barrier_end(volatile uint64_t * barrier_address, uint64_t total_num_cores) {
     uint64_t core_id;
     uint64_t atomic_inc = 1;
@@ -42,16 +48,14 @@ void bp_finish(uint8_t code) {
 void bp_hprint(uint8_t hex) {
   uint64_t core_id;
 
-  __asm__ volatile("csrr %0, mhartid": "=r"(core_id): :);
-
-  *(HPRINT_BASE_ADDR+core_id*8) = hex;
+  *(HPRINT_BASE_ADDR) = hex;
 }
 
 void bp_cprint(uint8_t ch) {
   uint64_t core_id;
 
-  __asm__ volatile("csrr %0, mhartid": "=r"(core_id): :);
-
-  *(CPRINT_BASE_ADDR+core_id*8) = ch;
+  *(CPRINT_BASE_ADDR) = ch;
 }
+
+
 

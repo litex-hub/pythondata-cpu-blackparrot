@@ -49,10 +49,12 @@
     logic                              v;                                                          \
     logic                              queue_v;                                                    \
     logic                              instr_v;                                                    \
+    logic                              pipe_ctrl_v;                                                \
     logic                              pipe_int_v;                                                 \
-    logic                              pipe_mul_v;                                                 \
     logic                              pipe_mem_v;                                                 \
+    logic                              pipe_mul_v;                                                 \
     logic                              pipe_fp_v;                                                  \
+    logic                              pipe_long_v;                                                \
                                                                                                    \
     logic                              mem_v;                                                      \
     logic                              csr_v;                                                      \
@@ -64,7 +66,13 @@
                                                                                                    \
   typedef struct packed                                                                            \
   {                                                                                                \
+    logic [dword_width_p-1:0] data;                                                                \
+  }  bp_be_comp_stage_reg_s;                                                                       \
+                                                                                                   \
+  typedef struct packed                                                                            \
+  {                                                                                                \
     logic                              v;                                                          \
+    logic                              ctrl_iwb_v;                                                 \
     logic                              int_iwb_v;                                                  \
     logic                              mul_iwb_v;                                                  \
     logic                              mem_iwb_v;                                                  \
@@ -98,13 +106,16 @@
     logic                                    ex1_instr_v;                                          \
     logic [vaddr_width_p-1:0]                ex1_npc;                                              \
     logic                                    ex1_br_or_jmp;                                        \
+    logic                                    ex1_btaken;                                           \
+                                                                                                   \
+    logic                                    long_busy;                                            \
                                                                                                    \
     /*                                                                                             \
      * 5 is the number of stages in the pipeline.                                                  \
      * In fact, we don't need all of this dependency information, since some of the stages are     \
      *    post-commit. However, for now we're passing all of it.                                   \
      */                                                                                            \
-    bp_be_dep_status_s[4:0]                 dep_status;                                            \
+    bp_be_dep_status_s[5:0]                 dep_status;                                            \
   }  bp_be_calc_status_s;                                                                          \
                                                                                                    \
   typedef struct packed                                                                            \
@@ -167,20 +178,23 @@
 `define bp_be_pipe_stage_reg_width(vaddr_width_mp) \
    (vaddr_width_mp                                                                                 \
    + rv64_instr_width_gp                                                                           \
-   + 12                                                                                            \
+   + 14                                                                                            \
    )
+
+`define bp_be_comp_stage_reg_width \
+  (dword_width_p)
 
 `define bp_be_isd_status_width(vaddr_width_mp, branch_metadata_fwd_width_mp) \
   (1 + vaddr_width_mp + branch_metadata_fwd_width_mp + 5 + rv64_reg_addr_width_gp +  2 + rv64_reg_addr_width_gp)
 
 `define bp_be_dep_status_width \
-  (8 + rv64_reg_addr_width_gp)
+  (9 + rv64_reg_addr_width_gp)
 
 `define bp_be_calc_status_width(vaddr_width_mp) \
   (2                                                                                               \
    + vaddr_width_p                                                                                 \
-   + 1                                                                                             \
-   + 5 * `bp_be_dep_status_width                                                                   \
+   + 3                                                                                             \
+   + 6 * `bp_be_dep_status_width                                                                   \
    )                                                                                               
 
 `define bp_be_commit_pkt_width(vaddr_width_mp) \

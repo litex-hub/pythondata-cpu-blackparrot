@@ -1,45 +1,65 @@
 ###
 
-BP_INC_DIR=$(abspath ../include/c)
-INC_DIR=$(abspath ./include)
-SRC_DIR=$(abspath ./src)
+TOP ?= $(shell git rev-parse --show-toplevel)
 
-BSG_MEM_DIR=$(abspath ../../../external/basejump_stl/bsg_mem)
+AS_INC_DIR=$(abspath ./include)
+AS_SRC_DIR=$(abspath ./src)
+UCODE_INC_DIR=$(abspath ./microcode/include)
+UCODE_SRC_DIR=$(abspath ./microcode/cce)
+
+ROMS_DIR=$(abspath ./roms)
+
+BSG_MEM_DIR=$(abspath $(TOP)/external/basejump_stl/bsg_mem)
+BSG_ROM_SCRIPT=$(BSG_MEM_DIR)/bsg_ascii_to_rom.py
 
 CXX=g++
 COMMON_CFLAGS=-Wall -Wno-switch -Wno-format -Wno-unused-function
 CXXFLAGS=-g -std=c++11 $(COMMON_CFLAGS)
-CXXFLAGS +=-I$(BP_INC_DIR) -I$(INC_DIR)
+CXXFLAGS +=-I$(AS_INC_DIR)
 
 LD=g++
 LFLAGS=-g $(COMMON_FLAGS)
 
-as_SRC=$(abspath $(wildcard $(SRC_DIR)/*.cc))
-
+AS_SRC=$(abspath $(wildcard $(AS_SRC_DIR)/*.cc))
+AS_OBJ=$(AS_SRC:.cc=.o)
 AS=bp-as
 
-CODE=$(abspath ./microcode)
-CODE_INC_DIR=$(CODE)/include
-CCE_DIR=$(CODE)/cce
-cce_SRC=$(abspath $(wildcard $(CCE_DIR)/*.S))
-cce_PRE_SRC=$(cce_SRC:.S=.pre)
-cce_MEM=$(cce_SRC:.S=.mem)
-cce_DBG=$(cce_SRC:.S=.dbg)
+UCODE_SRC=$(wildcard $(UCODE_SRC_DIR)/*.S)
+UCODE_BUILD_SRC=$(addprefix $(ROMS_DIR)/, $(notdir $(UCODE_SRC)))
+UCODE_MEM=$(UCODE_BUILD_SRC:.S=.mem)
+UCODE_ADDR=$(UCODE_BUILD_SRC:.S=.addr)
+UCODE_BIN=$(UCODE_BUILD_SRC:.S=.bin)
+UCODE_DBG=$(UCODE_BUILD_SRC:.S=.dbg)
+UCODE_ROM=$(UCODE_BUILD_SRC:.S=.rom)
 
-all: as
+MODULE_NAME ?= bp_cce_inst_rom
+
+.DEFAULT: echo
+
+echo:
+	@echo "try running: 'make as'"
+
+# Assembler
 
 %.o: %.cc
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-as: $(as_SRC:.cc=.o)
-	$(LD) $(LFLAGS) -o $(AS) $(as_SRC:.cc=.o)
+$(AS): $(AS_OBJ)
+	$(LD) $(LFLAGS) -o $(AS) $(AS_OBJ)
 
-cce: as $(cce_MEM)
-cce-dbg: as $(cce_DBG)
+as: $(AS)
+
+# Microcode
+
+dirs:
+	mkdir -p $(ROMS_DIR)
+	cp $(UCODE_SRC_DIR)/* $(ROMS_DIR)/
+
+%.addr: %.S
+	python2 py/addr.py -i $< > $@
 
 %.pre: %.S
-	echo $(CFLAGS)
-	gcc -E $(CFLAGS) -I$(CODE_INC_DIR) $< -o $@
+	gcc -E $(COMMON_CFLAGS) -I$(UCODE_INC_DIR) $< -o $@
 
 %.mem: %.pre
 	./$(AS) -b -i $< -o $@
@@ -48,25 +68,17 @@ cce-dbg: as $(cce_DBG)
 	./$(AS) -d -i $< -o $@
 
 %.rom: %.mem
-	python2 $(BSG_MEM_DIR)/bsg_ascii_to_rom.py $< bp_cce_inst_rom zero > bp_cce_inst_rom.v
+	python2 $(BSG_ROM_SCRIPT) $< $(MODULE_NAME) zero > $@
 
-clean:
-	rm -f $(AS) $(as_SRC:.cc=.o) $(cce_PRE_SRC) $(cce_MEM) $(cce_DBG)
-	rm -rf roms
+%.bin: %.mem
+	xxd -r -p $< > $@
 
-roms: as ei msi mesi fast
+roms: dirs $(AS) $(UCODE_ADDR) $(UCODE_MEM) $(UCODE_BIN) $(UCODE_ROM)
 
-ei: as
-	python2 py/roms.py -i microcode/cce/ei --bsg $(BSG_MEM_DIR) --outdir ./roms/ei
+tidy:
+	rm -f $(AS_OBJ)
 
-msi: as
-	python2 py/roms.py -i microcode/cce/msi --bsg $(BSG_MEM_DIR) --outdir ./roms/msi
+clean: tidy
+	rm -f $(AS)
+	rm -rf $(ROMS_DIR)
 
-mesi: as
-	python2 py/roms.py -i microcode/cce/mesi --bsg $(BSG_MEM_DIR) --outdir ./roms/mesi
-
-test: as
-	python2 py/roms.py -i microcode/cce/test --bsg $(BSG_MEM_DIR) --outdir ./roms/test
-
-fast: as
-	python2 py/roms.py -i microcode/cce/fast --bsg $(BSG_MEM_DIR) --outdir ./roms/fast

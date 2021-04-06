@@ -59,13 +59,24 @@ initial
     $fatal("Error: Must have exactly 1 row of I/O routers");
   if (mc_y_dim_p != 0)
     $fatal("Error: L2 expansion nodes not yet supported, MC must have 0 rows");
-  if (ac_x_dim_p != 0)
-    $fatal("Error: CAC not yet supported");
+  if (sac_x_dim_p > 1)
+    $fatal("Error: Must have <= 1 column of streaming accelerators");
+  if (cac_x_dim_p > 1)
+    $fatal("Error: Must have <= 1 column of coherent accelerators");
+  if ((cce_block_width_p == 256) && (dcache_assoc_p == 8 || icache_assoc_p == 8))
+    $fatal("Error: We can't maintain 64-bit dwords with a 256-bit cache block size and 8-way cache associativity");
+  if ((cce_block_width_p == 128) && (dcache_assoc_p == 4 || dcache_assoc_p == 8 || icache_assoc_p == 4 || icache_assoc_p == 8))
+    $fatal("Error: We can't maintain 64-bit dwords with a 128-bit cache block size and 4-way or 8-way cache associativity");
+  if ((l1_writethrough_p == 1) && (l1_coherent_p == 1))
+    $fatal("Error: Writethrough with coherent_l1 is unsupported");
 
   if (vaddr_width_p != 39)
     $warning("Warning: VM will not work without 39 bit vaddr");
   if (paddr_width_p != 40)
     $warning("Warning: paddr != 40 has not been tested");
+  if ((cce_block_width_p != icache_block_width_p) && (cce_block_width_p != dcache_block_width_p) && (cce_block_width_p != acache_block_width_p))
+    $warning("Warning: Different cache block widths not yet supported");
+  
 
 endmodule
 

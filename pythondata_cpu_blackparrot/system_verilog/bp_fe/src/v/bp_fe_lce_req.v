@@ -18,16 +18,19 @@ module bp_fe_lce_req
   #(parameter bp_params_e bp_params_p = e_bp_inv_cfg
    `declare_bp_proc_params(bp_params_p)
    `declare_bp_lce_cce_if_widths(cce_id_width_p, lce_id_width_p, paddr_width_p, lce_assoc_p, dword_width_p, cce_block_width_p)
-   `declare_bp_cache_service_if_widths(paddr_width_p, ptag_width_p, lce_sets_p, lce_assoc_p, dword_width_p, cce_block_width_p)
+   `declare_bp_cache_service_if_widths(paddr_width_p, ptag_width_p, icache_sets_p, icache_assoc_p, dword_width_p, icache_block_width_p, icache)
    
-   , localparam way_id_width_lp=`BSG_SAFE_CLOG2(lce_assoc_p)
-   , localparam block_size_in_words_lp=lce_assoc_p
-   , localparam data_mask_width_lp=(dword_width_p>>3)
-   , localparam byte_offset_width_lp=`BSG_SAFE_CLOG2(dword_width_p>>3)
+   , localparam way_id_width_lp=`BSG_SAFE_CLOG2(icache_assoc_p)
+   , localparam block_size_in_words_lp=icache_assoc_p
+   , localparam bank_width_lp = icache_block_width_p / icache_assoc_p
+   , localparam num_dwords_per_bank_lp = bank_width_lp / dword_width_p
+   , localparam data_mem_mask_width_lp=(bank_width_lp >> 3)
+   , localparam byte_offset_width_lp=`BSG_SAFE_CLOG2(bank_width_lp >> 3)
    , localparam word_offset_width_lp=`BSG_SAFE_CLOG2(block_size_in_words_lp)
-   , localparam index_width_lp=`BSG_SAFE_CLOG2(lce_sets_p)
+   , localparam index_width_lp=`BSG_SAFE_CLOG2(icache_sets_p)
    , localparam block_offset_width_lp=(word_offset_width_lp+byte_offset_width_lp)
-   , localparam tag_width_lp=(paddr_width_p-block_offset_width_lp-index_width_lp)
+   , localparam ptag_width_lp=(paddr_width_p-bp_page_offset_width_gp)
+   , localparam block_size_in_bytes_lp = (icache_block_width_p / 8)
    
    , parameter timeout_max_limit_p=4
   )
@@ -36,10 +39,10 @@ module bp_fe_lce_req
 
     , input [lce_id_width_p-1:0] lce_id_i
  
-    , input [cache_req_width_lp-1:0] cache_req_i
+    , input [icache_req_width_lp-1:0] cache_req_i
     , input cache_req_v_i
     , output logic cache_req_ready_o
-    , input [cache_req_metadata_width_lp-1:0] cache_req_metadata_i
+    , input [icache_req_metadata_width_lp-1:0] cache_req_metadata_i
     , input cache_req_metadata_v_i
 
     , output logic [paddr_width_p-1:0] miss_addr_o
@@ -64,12 +67,12 @@ module bp_fe_lce_req
   // lce interface
 
   `declare_bp_lce_cce_if(cce_id_width_p, lce_id_width_p, paddr_width_p, lce_assoc_p, dword_width_p, cce_block_width_p);
-  `declare_bp_cache_service_if(paddr_width_p, ptag_width_p, lce_sets_p, lce_assoc_p, dword_width_p, cce_block_width_p);
+  `declare_bp_cache_service_if(paddr_width_p, ptag_width_p, icache_sets_p, icache_assoc_p, dword_width_p, icache_block_width_p, icache);
 
   bp_lce_cce_resp_s lce_resp;
   bp_lce_cce_req_s lce_req;
-  bp_cache_req_s cache_req_cast_li;
-  bp_cache_req_metadata_s cache_req_metadata_cast_li;
+  bp_icache_req_s cache_req_cast_li;
+  bp_icache_req_metadata_s cache_req_metadata_cast_li;
 
   assign lce_req_o = lce_req;
   assign lce_resp_o = lce_resp;
@@ -81,9 +84,9 @@ module bp_fe_lce_req
   always_ff @(posedge clk_i)
     cache_req_v_r <= cache_req_v_i;
 
-  bp_cache_req_metadata_s cache_req_metadata_r;
+  bp_icache_req_metadata_s cache_req_metadata_r;
   bsg_dff_en_bypass
-   #(.width_p($bits(bp_cache_req_metadata_s)))
+   #(.width_p($bits(bp_icache_req_metadata_s)))
    metadata_reg
     (.clk_i(clk_i)
 
@@ -139,6 +142,19 @@ module bp_fe_lce_req
      ,.cce_id_o(resp_cce_id_lo)
      );
 
+  // coherence request size
+  // block size smaller than 8-bytes not supported
+  bp_mem_msg_size_e req_block_size =
+    (block_size_in_bytes_lp == 128)
+    ? e_mem_msg_size_128
+    : (block_size_in_bytes_lp == 64)
+      ? e_mem_msg_size_64
+      : (block_size_in_bytes_lp == 32)
+        ? e_mem_msg_size_32
+        : (block_size_in_bytes_lp == 16)
+          ? e_mem_msg_size_16
+          : e_mem_msg_size_8;
+
   // lce_req fsm
   always_comb begin
 
@@ -158,8 +174,8 @@ module bp_fe_lce_req
     lce_req.header.msg_type      = e_lce_req_type_rd;
     lce_req.header.addr          = miss_addr_r;
     lce_req.header.non_exclusive = e_lce_req_non_excl;
-    lce_req.header.lru_dirty     = e_lce_req_lru_clean;
-    lce_req.header.lru_way_id    = cache_req_metadata_r.repl_way;
+    lce_req.header.lru_way_id    = lce_assoc_p'(cache_req_metadata_r.repl_way);
+    lce_req.header.size          = req_block_size;
 
 
     lce_resp_v_o          = 1'b0;
@@ -211,10 +227,9 @@ module bp_fe_lce_req
         // TODO: this may need to change depending on what the LCE and CCE behavior spec is
         // In order for the uncached load to replay successfully and extract the correct
         // 32-bits, we fetch the aligned 64-bits containing the desired 32-bits.
-        // Zero out the byte offset bits so the address is 64-bit aligned.
-        lce_req.header.addr = {miss_addr_r[paddr_width_p-1:byte_offset_width_lp]
-                               , {byte_offset_width_lp{1'b0}}};
-        lce_req.header.uc_size = e_lce_uc_req_8;
+        // Zero out LSB 3-bits so the address is 64-bit aligned
+        lce_req.header.addr = {miss_addr_r[paddr_width_p-1:3], {3'b000}};
+        lce_req.header.size = e_mem_msg_size_8;
         lce_req.data = '0;
 
         state_n = lce_req_v_o

@@ -1,8 +1,8 @@
 
 include Makefile.frag
 
-RISCV_GCC  = riscv64-unknown-elf-gcc --static -nostdlib -nostartfiles -fPIC -march=rv64ia -mabi=lp64 -mcmodel=medany -I$(TEST_DIR)/include
-RISCV_LINK = -static -nostdlib -nostartfiles -L$(TEST_DIR)/lib -T src/riscv.ld 
+RISCV_GCC  = $(CROSS_COMPILE)gcc --static -nostartfiles -fPIC -march=rv64ima -mabi=lp64 -mcmodel=medany -I$(TEST_DIR)/include
+RISCV_LINK = -static -nostartfiles -L$(TEST_DIR)/lib -T src/riscv.ld 
 
 .PHONY: all bp-demo-riscv bp-demo-s
 
@@ -35,6 +35,9 @@ mc_rand_walk_%.s:
 mc_work_share_sort_%.s:
 	$(RISCV_GCC) -DNUM_CORES=$(notdir $*) -S -o src/mc_work_share_sort_$(notdir $*).s src/mc_work_share_sort.c
 
+loop_test.s:
+	$(RISCV_GCC) -O0 -S -o src/$@ src/loop_test.c
+
 %.s:
 	$(RISCV_GCC) -S -o src/$@ src/$*.c
 
@@ -46,4 +49,5 @@ clean:
 	rm -f src/mc_rand_walk_*.s
 	rm -f src/mc_work_share_sort_*.s
 	rm -f src/queue_demo_*.s
+	rm -f src/loop_test.s
 

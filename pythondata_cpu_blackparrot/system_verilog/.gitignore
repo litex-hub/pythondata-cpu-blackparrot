@@ -9,6 +9,7 @@ external/*
 *.hex
 *.mem
 *.nbf
+*.elf
 *.riscv
 *.s
 *.dump
@@ -17,6 +18,7 @@ external/*
 *_gendata.pl
 *.o
 *.a
+*.png
 results/
 reports/
 logs/
@@ -24,3 +26,4 @@ bp_common/test/bin/
 bp_common/test/lib/
 bp_common/test/include/
 spec2000/
+regress_logs/

@@ -26,17 +26,17 @@ module bp_nonsynth_host
    , output [num_core_p-1:0]                       program_finish_o
    );
 
-//import "DPI-C" context function void start();
-//import "DPI-C" context function int scan();
-//import "DPI-C" context function void pop();
+import "DPI-C" context function void start();
+import "DPI-C" context function int scan();
+import "DPI-C" context function void pop();
 
 logic [63:0] ch;
 initial begin
-//  start();
+  start();
 end
 
 always_ff @(posedge clk_i) begin
-  //ch = scan();
+  ch = scan();
 end
 
 `declare_bp_me_if(paddr_width_p, cce_block_width_p, lce_id_width_p, lce_assoc_p);
@@ -115,7 +115,7 @@ bsg_dff_reset
    );
 
 assign program_finish_o = finish_r;
- (* mark_debug = "true" *) logic  core_pass;
+
 always_ff @(negedge clk_i)
   begin
     if (putchar_data_cmd_v & io_cmd_v_i) begin
@@ -123,17 +123,14 @@ always_ff @(negedge clk_i)
       $fflush(32'h8000_0001);
     end
     if (getchar_data_cmd_v & io_cmd_v_i)
-     // pop();
+      pop();
     for (integer i = 0; i < num_core_p; i++)
       begin
         // PASS when returned value in finish packet is zero
         if (finish_w_v_li[i] & io_cmd_v_i &
           (io_cmd_cast_i.data[0+:8] == 8'(0)))
-        begin
           $display("[CORE%0x FSH] PASS", i);
-          core_pass <= 1;
-        end
-          // FAIL when returned value in finish packet is non-zero
+        // FAIL when returned value in finish packet is non-zero
         if (finish_w_v_li[i] & io_cmd_v_i &
           (io_cmd_cast_i.data[0+:8] != 8'(0)))
           $display("[CORE%0x FSH] FAIL", i);

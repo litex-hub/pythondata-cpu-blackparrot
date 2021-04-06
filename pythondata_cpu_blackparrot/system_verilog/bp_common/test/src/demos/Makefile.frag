@@ -1,5 +1,8 @@
 BP_DEMOS_C = \
+  bubblesort_demo       \
   basic_demo            \
+  streaming_accelerator_demo \
+  coherent_accelerator_demo\
   atomic_queue_demo_2   \
   atomic_queue_demo_4   \
   atomic_queue_demo_8   \
@@ -38,12 +41,15 @@ BP_DEMOS_C = \
   mc_work_share_sort_6  \
   mc_work_share_sort_8  \
   mc_work_share_sort_12 \
-  mc_work_share_sort_16
+  mc_work_share_sort_16 \
+  cache_hammer \
+  cache_flush \
+  loop_test
 
 BP_DEMOS_S = \
 	simple                \
 	uc_simple             \
-  hello_world
+  hello_world           \
 
 BP_DEMOS = $(BP_DEMOS_S) $(BP_DEMOS_C)
 
