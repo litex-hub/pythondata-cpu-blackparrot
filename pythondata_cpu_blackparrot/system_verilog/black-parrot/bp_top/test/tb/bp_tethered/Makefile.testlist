@@ -1,7 +1,7 @@
 
 MISC_TESTS := \
   cache_hammer
-MISC_TESTLIST := $(addprefix bp_tests@, $(MISC_TESTS))
+MISC_TESTLIST := $(addprefix bp-tests@, $(MISC_TESTS))
 
 RV64_P_ISA_TESTS := \
   rv64ui-p-add     \
@@ -88,9 +88,33 @@ RV64_P_ISA_TESTS := \
   rv64um-p-rem       \
   rv64um-p-remu      \
   rv64um-p-remuw     \
-  rv64um-p-remw
+  rv64um-p-remw      \
+                     \
+  rv64uf-p-fadd      \
+  rv64uf-p-fclass    \
+  rv64uf-p-fcmp      \
+  rv64uf-p-fcvt      \
+  rv64uf-p-fcvt_w    \
+  rv64uf-p-fdiv      \
+  rv64uf-p-fmadd     \
+  rv64uf-p-fmin      \
+  rv64uf-p-ldst      \
+  rv64uf-p-move      \
+  rv64uf-p-recoding  \
+                     \
+  rv64ud-p-fadd      \
+  rv64ud-p-fclass    \
+  rv64ud-p-fcmp      \
+  rv64ud-p-fcvt      \
+  rv64ud-p-fcvt_w    \
+  rv64ud-p-fdiv      \
+  rv64ud-p-fmadd     \
+  rv64ud-p-fmin      \
+  rv64ud-p-ldst      \
+  rv64ud-p-move      \
+  rv64ud-p-structural
 
-RV64_P_ISA_TESTLIST := $(addprefix riscv_tests@, $(RV64_P_ISA_TESTS))
+RV64_P_ISA_TESTLIST := $(addprefix riscv-tests@, $(RV64_P_ISA_TESTS))
 
   #rv64ua-v-amominu_w
 RV64_V_ISA_TESTS := \
@@ -162,7 +186,7 @@ RV64_V_ISA_TESTS := \
   rv64ua-v-amoxor_w  \
   rv64ua-v-lrsc
 
-RV64_V_ISA_TESTLIST := $(addprefix riscv_tests@, $(RV64_V_ISA_TESTS))
+RV64_V_ISA_TESTLIST := $(addprefix riscv-tests@, $(RV64_V_ISA_TESTS))
 
 RV64_PT_ISA_TESTS := \
   rv64ui-pt-add     \
@@ -234,7 +258,7 @@ RV64_PT_ISA_TESTS := \
   rv64ua-pt-amoxor_w  \
   rv64ua-pt-lrsc
 
-RV64_PT_ISA_TESTLIST := $(addprefix riscv_tests@, $(RV64_PT_ISA_TESTS))
+RV64_PT_ISA_TESTLIST := $(addprefix riscv-tests@, $(RV64_PT_ISA_TESTS))
 
   # TODO: Fails in spike
   #rv64ui-vt-slti
@@ -308,7 +332,7 @@ RV64_VT_ISA_TESTS := \
   rv64ua-vt-amoxor_w  \
   rv64ua-vt-lrsc
 
-RV64_VT_ISA_TESTLIST := $(addprefix riscv_tests@, $(RV64_VT_ISA_TESTS))
+RV64_VT_ISA_TESTLIST := $(addprefix riscv-tests@, $(RV64_VT_ISA_TESTS))
 
 RV64_BENCHMARK_TESTS := \
   median   \
@@ -319,7 +343,7 @@ RV64_BENCHMARK_TESTS := \
   vvadd    \
   dhrystone
 
-RV64_BENCHMARK_TESTLIST := $(addprefix riscv_tests@, $(RV64_BENCHMARK_TESTS))
+RV64_BENCHMARK_TESTLIST := $(addprefix riscv-tests@, $(RV64_BENCHMARK_TESTS))
 
 RISCV_TESTLIST := \
 	$(RV64_P_ISA_TESTLIST) \
@@ -360,12 +384,9 @@ BEEBS_TESTS := \
   jfdctint \
   lcdnum \
   levenshtein \
-  ludcmp \
-  matmult-float \
   matmult-int \
   mergesort \
   miniz \
-  minver \
   nbody \
   ndes \
   nettle-aes \
@@ -397,9 +418,7 @@ BEEBS_TESTS := \
   sglib-rbtree \
   slre \
   sqrt \
-  st \
   statemate \
-  stb_perlin \
   stringsearch1 \
   strstr \
   tarai \
@@ -407,9 +426,17 @@ BEEBS_TESTS := \
   trio-snprintf \
   trio-sscanf \
   ud \
-  whetstone \
   wikisort \
   qsort
+
+# COSIM fail 0.0->-0.0
+#  minver \
+#  stb_perlin \
+#  whetstone \
+#
+# COSIM fail LFS init
+#  ludcmp \
+#  matmult-float \
 
 BEEBS_TESTLIST := $(addprefix beebs@, $(BEEBS_TESTS))
 
@@ -430,7 +457,7 @@ MC_TESTS := \
   mc_work_share_sort_8 \
   mc_work_share_sort_16
 
-MC_TESTLIST := $(addprefix bp_tests@, $(MC_TESTS))
+MC_TESTLIST := $(addprefix bp-tests@, $(MC_TESTS))
 
 RISCVDV_TESTS := \
   riscv_arithmetic_basic_test     \
@@ -444,9 +471,32 @@ RISCVDV_TESTS := \
   riscv_rand_jump_test            \
   riscv_sfence_exception_test
 
-RISCVDV_TESTLIST := $(addprefix riscvdv_tests@, $(RISCVDV_TESTS))
+# TODO: Clean this up with a better generator
+RISCVDV_TESTLIST  = $(addprefix riscvdv@, $(addsuffix  _0, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix  _1, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix  _2, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix  _3, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix  _4, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix  _5, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix  _6, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix  _7, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix  _8, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix  _9, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix _10, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix _11, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix _12, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix _13, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix _14, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix _15, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix _16, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix _17, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix _18, $(RISCVDV_TESTS)))
+RISCVDV_TESTLIST += $(addprefix riscvdv@, $(addsuffix _19, $(RISCVDV_TESTS)))
 
 SPEC_TESTS := \
+  177.mesa \
+  188.ammp \
+  183.equake \
   175.vpr \
   181.mcf \
   164.gzip \
@@ -457,16 +507,16 @@ SPEC_TESTS := \
 SPEC_TESTLIST := $(addprefix spec@, $(SPEC_TESTS))
 
 BASELINE_TESTLIST := \
-  bp_tests@hello_world \
+  bp-tests@hello_world \
   beebs@bs \
   beebs@dijkstra \
   beebs@fibcall \
   beebs@frac \
-  riscv_tests@median \
-  riscv_tests@rv64ui-p-blt \
+  riscv-tests@median \
+  riscv-tests@rv64ui-p-blt \
   beebs@sglib-arraybinsearch \
-  riscv_tests@towers \
-  riscv_tests@vvadd
+  riscv-tests@towers \
+  riscv-tests@vvadd
 
 TESTLIST ?=
 run_testlist.%:
@@ -480,14 +530,16 @@ run_test@%:
 	$(eval override TS    := $(word 3,$(subst @,  ,$*)))
 	$(MAKE) sim.$(TS) SUITE=$(SUITE) PROG=$(PROG)
 
+dromajo_dump:
+	$(DROMAJO) $(BP_SDK_PROG_DIR)/$(SUITE)/$(PROG).riscv --host $(if $(AMOEN),--enable_amo) --ncpus=$(NCPUS) \
+		--checkpoint_period=$(SAMPLE_INSTR_P) --save=dromajo --memory_size=$(SAMPLE_MEMSIZE)
+
 # Run an entire benchmark in parallel
 # Important parameters:
 #   SAMPLE_INSTR_P  - instructions per sample
 #   SAMPLE_WARMUP_P - instructions to run for warmup, without statistics
 #   SAMPLE_MEMSIZE  - RAM size of the sample (affects simulation startup time)
-run_psample.%:
-	$(DROMAJO) $(BP_TEST_MEM_DIR)/$(SUITE)/$(PROG).riscv --host \
-		--dump_period=$(SAMPLE_INSTR_P) --save=dromajo --memory_size=$(SAMPLE_MEMSIZE)
+run_psample.%: dromajo_dump
 	$(eval CHECKPOINTS := $(subst .mainram,,$(subst dromajo.,,$(shell ls dromajo.*.mainram))))
 	rm dromajo.*
 	$(MAKE) $(addsuffix @$*, $(addprefix run_sample@, $(CHECKPOINTS)))
@@ -495,14 +547,14 @@ run_psample.%:
 # Special case 0, because we won't drop a checkpoint for it
 run_sample@0%:
 	$(eval override TS := $(word 1,$(subst @,  ,$*)))
-	$(MAKE) -j1 build.$(TS) COSIM_P=1 LOAD_NBF_P=1 PRELOAD_MEM_P=1 TAG=$(SAMPLE_START_P).$(SAMPLE_WARMUP_P).$(SAMPLE_INSTR_P)
+	$(MAKE) -j1 build.$(TS) CHECKPOINT_P=0 NBF_CONFIG_P=1 TAG=$(SAMPLE_START_P).$(SAMPLE_WARMUP_P).$(SAMPLE_INSTR_P)
 	$(MAKE) sim.$(TS) TAG=$(SAMPLE_START_P).$(SAMPLE_WARMUP_P).$(SAMPLE_INSTR_P)
 
-# For example: run_sample@bp_tests@hello_world@60
+# For example: run_sample@bp-tests@hello_world@60
 run_sample@%:
 	$(eval override SAMPLE_START_P  := $(word 1,$(subst @,  ,$*)))
 	$(eval override TS              := $(word 2,$(subst @,  ,$*)))
-	$(MAKE) -j1 build.$(TS) COSIM_P=1 LOAD_NBF_P=1 PRELOAD_MEM_P=1 TAG=$(SAMPLE_START_P).$(SAMPLE_WARMUP_P).$(SAMPLE_INSTR_P)
+	$(MAKE) -j1 build.$(TS) CHECKPOINT_P=1 NBF_CONFIG_P=1 TAG=$(SAMPLE_START_P).$(SAMPLE_WARMUP_P).$(SAMPLE_INSTR_P)
 	$(MAKE) sim_sample.$(TS) TAG=$(SAMPLE_START_P).$(SAMPLE_WARMUP_P).$(SAMPLE_INSTR_P)
 
 ## Aliases

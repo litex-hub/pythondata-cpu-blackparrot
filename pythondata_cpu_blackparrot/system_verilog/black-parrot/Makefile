@@ -1,81 +1,44 @@
-## Find top of git repo
 TOP ?= $(shell git rev-parse --show-toplevel)
 
+.PHONY: help libs tools_lite tools tools_bsg tidy bleach_all
+
 include $(TOP)/Makefile.common
+include $(TOP)/Makefile.tools
 
-BP_BIN_DIR     := $(BP_EXTERNAL_DIR)/bin
-BP_LIB_DIR     := $(BP_EXTERNAL_DIR)/lib
-BP_INCLUDE_DIR := $(BP_EXTERNAL_DIR)/include
-BP_TOUCH_DIR   := $(BP_EXTERNAL_DIR)/touchfiles
+help:
+	@echo "usage: make [libs, tools, tools_lite, tools_bsg, tidy, bleach_all]"
 
-include $(BP_EXTERNAL_DIR)/Makefile.tools
+libs: $(BP_TOOLS_LIB_DIR)/libdramsim3.so
+$(BP_TOOLS_LIB_DIR)/libdramsim3.so:
+	cd $(TOP); git submodule update --init --recursive --checkout $(BASEJUMP_STL_DIR)
+	cd $(TOP); git submodule update --init --recursive --checkout $(HARDFLOAT_DIR)
+	$(MAKE) -C $(BASEJUMP_STL_DIR)/bsg_test -f libdramsim3.mk
+	mkdir -p $(BP_TOOLS_LIB_DIR)
+	cp $(BASEJUMP_STL_DIR)/bsg_test/libdramsim3.so $(BP_TOOLS_LIB_DIR)/libdramsim3.so
 
-.DEFAULT: prep
+TOOL_TARGET_DIRS := $(BP_TOOLS_BIN_DIR) $(BP_TOOLS_LIB_DIR) $(BP_TOOLS_INCLUDE_DIR) $(BP_TOOLS_TOUCH_DIR)
+$(TOOL_TARGET_DIRS):
+	mkdir -p $@
 
-## This is a small target which runs fast and allows folks to run hello world
-prep_lite: | $(TARGET_DIRS)
-	git submodule update --init
-	$(MAKE) libs
+tools_lite: libs | $(TOOL_TARGET_DIRS)
 	$(MAKE) verilator
-	$(MAKE) -j1 ucode
+	$(MAKE) dromajo
 
-## This is the big target that just builds everything. Most users should just press this button
-prep: | $(TARGET_DIRS)
-	git submodule update --init
-	$(MAKE) libs
-	$(MAKE) tools
-	$(MAKE) -j1 progs 
-	$(MAKE) -j1 ucode
+## This target makes the tools needed for the BlackParrot RTL
+tools: tools_lite
+	$(MAKE) bsg_sv2v
 
-## This target updates submodules needed for building BlackParrot.
-#  We only need to keep update basejump_stl up to date. The other submodules
-#    are for building tools, which we should only need to do every so often
+tools_bsg: tools bsg_cadenv
 
-tidy_tools:
-	cd $(TOP); git submodule deinit -f external/riscv-gnu-toolchain
-	cd $(TOP); git submodule deinit -f external/verilator
-	cd $(TOP); git submodule deinit -f external/dromajo
-	cd $(TOP); git submodule deinit -f external/riscv-isa-sim
-	cd $(TOP); git submodule deinit -f external/axe
-	cd $(TOP); git submodule deinit -f external/cmurphi
-	cd $(TOP); git submodule deinit -f external/zachjs_sv2v
+bsg_cadenv: $(BP_EXTERNAL_DIR)/bsg_cadenv
+$(BP_EXTERNAL_DIR)/bsg_cadenv:
+	-git clone git@github.com:bespoke-silicon-group/bsg_cadenv.git $(BP_EXTERNAL_DIR)/bsg_cadenv
 
+tidy:
+	echo "BlackParrot RTL is tidy enough"
 
 ## This target just wipes the whole repo clean.
 #  Use with caution.
 bleach_all:
 	cd $(TOP); git clean -fdx; git submodule deinit -f .
-
-## This is the list of target directories that tools and libraries will be installed into
-TARGET_DIRS := $(BP_BIN_DIR) $(BP_LIB_DIR) $(BP_INCLUDE_DIR) $(BP_TOUCH_DIR)
-$(TARGET_DIRS):
-	mkdir $@
-
-## These targets fetch and build all dependencies needed for running simulations
-#    to test BlackParrot. By default, all tools are built but comment any tools that 
-#    you already have a copy of. If your version of a tool significantly differs from 
-#    our submodule version, use at your own risk. 
-#
-libs: $(TARGET_DIRS)
-	$(MAKE) basejump
-	$(MAKE) dramsim2
-	#$(MAKE) dramsim3
-	$(MAKE) dromajo
-
-tools: | $(TARGET_DIRS)
-	$(MAKE) gnu
-	$(MAKE) verilator
-	$(MAKE) dromajo
-	$(MAKE) spike
-	#$(MAKE) axe
-	#$(MAKE) cmurphi
-	#$(MAKE) zachjs_sv2v
-	#$(MAKE) bsg_sv2v
-
-progs: tools
-	git submodule update --init --recursive $(BP_COMMON_DIR)/test
-	$(MAKE) -C $(BP_COMMON_DIR)/test perch bp_tests riscv_tests beebs coremark
-
-ucode: | basejump
-	$(MAKE) -C $(BP_ME_DIR)/src/asm roms
 

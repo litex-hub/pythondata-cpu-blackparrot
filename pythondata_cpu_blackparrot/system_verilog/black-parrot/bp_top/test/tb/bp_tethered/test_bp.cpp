@@ -1,52 +1,51 @@
 #include <stdlib.h>
-#include <systemc.h>
-#include <verilated_vcd_sc.h>
+#include <verilated_fst_c.h>
 #include <verilated_cov.h>
 
 #include "Vtestbench.h"
 #include "Vtestbench__Dpi.h"
+#include "bsg_nonsynth_dpi_clock_gen.hpp"
+using namespace bsg_nonsynth_dpi;
 
-#ifndef BP_SIM_CLK_PERIOD
-#define BP_SIM_CLK_PERIOD 10
-#endif
-
-int sc_main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   Verilated::commandArgs(argc, argv);
-  Verilated::traceEverOn(VM_TRACE);
+  Verilated::traceEverOn(VM_TRACE_FST);
   Verilated::assertOn(false);
 
-  Vtestbench *tb = new Vtestbench("test_bp");
+  Vtestbench *tb = new Vtestbench("testbench");
+
+  svScope g_scope = svGetScopeFromName("testbench");
+  svSetScope(g_scope);
+
+  // Let clock generators register themselves.
+  tb->eval();
 
   // Use me to find the correct scope of your DPI functions
   //Verilated::scopesDump();
 
-  sc_clock clock("clk", sc_time(BP_SIM_CLK_PERIOD, SC_NS));
-  sc_signal <bool> reset("reset");
-
-  tb->clk_i(clock);
-  tb->reset_i(reset);
-
-#if VM_TRACE
+#if VM_TRACE_FST
   std::cout << "Opening dump file" << std::endl;
-  VerilatedVcdSc* wf = new VerilatedVcdSc;
+  VerilatedFstC* wf = new VerilatedFstC;
   tb->trace(wf, 10);
-  wf->open("dump.vcd");
+  wf->open("dump.fst");
 #endif
 
-  reset = 1;
-
-  std::cout << "Raising reset" << std::endl;
-  for (int i = 0; i < 20; i++) {
-    sc_start(BP_SIM_CLK_PERIOD, SC_NS);
+  while(tb->reset_i == 1) {
+    bsg_timekeeper::next();
+    tb->eval();
+    #if VM_TRACE_FST
+      wf->dump(sc_time_stamp());
+    #endif
   }
-  std::cout << "Lowering reset" << std::endl;
 
-  reset = 0;
   Verilated::assertOn(true);
 
   while (!Verilated::gotFinish()) {
-    sc_start(BP_SIM_CLK_PERIOD, SC_NS);
+    bsg_timekeeper::next();
+    tb->eval();
+    #if VM_TRACE_FST
+      wf->dump(sc_time_stamp());
+    #endif
   }
   std::cout << "Finishing test" << std::endl;
 
@@ -55,6 +54,15 @@ int sc_main(int argc, char **argv)
   VerilatedCov::write("coverage.dat");
 #endif
 
+  std::cout << "Executing final" << std::endl;
+  tb->final();
+
+  #if VM_TRACE_FST
+    std::cout << "Closing dump file" << std::endl;
+    wf->close();
+  #endif
+
   std::cout << "Exiting" << std::endl;
   exit(EXIT_SUCCESS);
 }
+

@@ -12,12 +12,13 @@ export REPORT_PATH  := $(BP_TOP_DIR)/syn/reports
 export TOUCH_PATH   := $(BP_TOP_DIR)/syn/touchfiles
 
 export TB    ?= bp_tethered
-export CFG   ?= e_bp_softcore_cfg
-export SUITE ?= bp_tests
+export CFG   ?= e_bp_default_cfg
+export DRAM  ?= dramsim3
+export SUITE ?= bp-tests
 export PROG  ?= hello_world
 export TAG   ?= none
 
-include $(BP_TEST_DIR)/Makefile.tests
+include $(TB_PATH)/$(TB)/Makefile.cfgs
 include $(TB_PATH)/$(TB)/Makefile.params
 include $(TB_PATH)/$(TB)/Makefile.testlist
 include $(BP_COMMON_DIR)/syn/Makefile.common
@@ -25,4 +26,5 @@ include $(BP_COMMON_DIR)/syn/Makefile.dc
 include $(BP_COMMON_DIR)/syn/Makefile.sv2v
 include $(BP_COMMON_DIR)/syn/Makefile.verilator
 include $(BP_COMMON_DIR)/syn/Makefile.vcs
+include $(BP_COMMON_DIR)/syn/Makefile.vivado
 
