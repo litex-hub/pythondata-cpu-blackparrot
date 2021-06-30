@@ -381,7 +381,7 @@ module bp_unicore_lite
   assign local_addr_cast = proc_cmd_selected_lo.header.addr;
   wire [dev_id_width_gp-1:0] device_cmd_li = local_addr_cast.dev;
 
-  wire local_cmd_li        = (proc_cmd_selected_lo.header.addr < dram_base_addr_gp);
+  wire local_cmd_li        = (proc_cmd_selected_lo.header.addr < 32'h5000_0000);
   wire is_other_hio     = (proc_cmd_selected_lo.header.addr[paddr_width_p-1-:hio_width_p] != 0);
   wire is_cfg_cmd          = local_cmd_li & (device_cmd_li == cfg_dev_gp);
   wire is_clint_cmd        = local_cmd_li & (device_cmd_li == clint_dev_gp);

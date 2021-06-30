@@ -28,7 +28,7 @@ module bp_cce_mmio_cfg_loader
     // to be enabled.
     , parameter hio_mask_p         = 64'h0000_0000_0000_0001
 
-    , localparam bp_pc_entry_point_gp=39'h10_3000
+    , localparam bp_pc_entry_point_gp=39'h00_7000_0000
     )
   (input                                             clk_i
    , input                                           reset_i

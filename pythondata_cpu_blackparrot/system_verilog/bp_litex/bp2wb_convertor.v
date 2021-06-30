@@ -5,17 +5,15 @@
 
 module bp2wb_convertor
   import bp_common_pkg::*;
-  import bp_common_aviary_pkg::*;
-  import bp_cce_pkg::*;
   import bp_me_pkg::*;
-  #(parameter bp_params_e bp_params_p = e_bp_single_core_cfg
+  #(parameter bp_params_e bp_params_p = e_bp_unicore_no_l2_cfg
    `declare_bp_proc_params(bp_params_p)
-   `declare_bp_me_if_widths(paddr_width_p, cce_block_width_p, lce_id_width_p, lce_assoc_p)
+   `declare_bp_bedrock_mem_if_widths(paddr_width_p, cce_block_width_p, lce_id_width_p, lce_assoc_p, cce)
 
 //   , parameter [paddr_width_p-1:0] dram_offset_p = '0
    , localparam num_block_words_lp   = cce_block_width_p / 64
    , localparam num_block_bytes_lp   = cce_block_width_p / 8
-   , localparam num_word_bytes_lp    = dword_width_p / 8
+   , localparam num_word_bytes_lp    = dword_width_gp / 8 //gp correct?
    , localparam block_offset_bits_lp = `BSG_SAFE_CLOG2(num_block_bytes_lp)
    , localparam word_offset_bits_lp  = `BSG_SAFE_CLOG2(num_block_words_lp)
    , localparam byte_offset_bits_lp  = `BSG_SAFE_CLOG2(num_word_bytes_lp)
@@ -55,11 +53,11 @@ module bp2wb_convertor
    , input                        rty_i //TODO: hardwire in Litex
    );
 
-  `declare_bp_me_if(paddr_width_p, cce_block_width_p, lce_id_width_p, lce_assoc_p);
+  `declare_bp_bedrock_mem_if(paddr_width_p, cce_block_width_p, lce_id_width_p, lce_assoc_p, cce);
   
   //locals
  (* mark_debug = "true" *) logic  [total_datafetch_cycle_width:0] ack_ctr  = 0;
- (* mark_debug = "true" *) bp_cce_mem_msg_s  mem_cmd_cast_i, mem_resp_cast_o,  mem_cmd_debug, mem_cmd_debug2;
+ (* mark_debug = "true" *) bp_bedrock_cce_mem_msg_s  mem_cmd_cast_i, mem_resp_cast_o,  mem_cmd_debug, mem_cmd_debug2;
  (* mark_debug = "true" *) logic ready_li, v_li, stb_justgotack;
   (* mark_debug = "true" *) logic [cce_block_width_p-1:0] data_lo; 
   (* mark_debug = "true" *) logic  [cce_block_width_p-1:0] data_li;
@@ -77,7 +75,7 @@ module bp2wb_convertor
   assign mem_resp_v_o =  v_li;
   assign stb_o = (set_stb) && !stb_justgotack; 
   assign cyc_o = stb_o; 
-  assign sel_o = mem_cmd_r.header.size == e_mem_msg_size_4 ? ('h0F << wr_byte_shift) : 'hFF; 
+  assign sel_o = mem_cmd_r.header.size == e_bedrock_msg_size_4 ? ('h0F << wr_byte_shift) : 'hFF; 
   assign cti_o = 0;
   assign bte_o = 0;
 
@@ -119,7 +117,7 @@ module bp2wb_convertor
         begin
           stb_justgotack <= 1;
           data_li[(ack_ctr*wbone_data_width) +: wbone_data_width] <= dat_i;
-          if ((ack_ctr == total_datafetch_cycle_lp-1) || (mem_cmd_addr_l < cached_addr_base && mem_cmd_r.header.msg_type == e_cce_mem_uc_wr )) //if uncached store, just one cycle is fine
+          if ((ack_ctr == total_datafetch_cycle_lp-1) || (mem_cmd_addr_l < cached_addr_base && mem_cmd_r.header.msg_type == e_bedrock_mem_uc_wr )) //if uncached store, just one cycle is fine
           begin 
             v_li <=1;
             set_stb <= 0;
@@ -137,7 +135,7 @@ module bp2wb_convertor
 
   //Packet Pass from BP to BP2WB
   assign mem_cmd_cast_i = mem_cmd_i;
-   bp_cce_mem_msg_s mem_cmd_r;
+   bp_bedrock_cce_mem_msg_s mem_cmd_r;
    bsg_dff_reset_en
   #(.width_p(cce_mem_msg_width_lp))
     mshr_reg
@@ -157,18 +155,18 @@ module bp2wb_convertor
     if( mem_cmd_addr_l < cached_addr_base )
     begin 
       adr_o = mem_cmd_addr_l[wbone_addr_ubound-1:wbone_addr_lbound];//no need to change address for uncached stores/loads
-      dat_o = mem_cmd_r.header.size == e_mem_msg_size_4 ? data_lo[(0*wbone_data_width) +: wbone_data_width] << rd_byte_offset*8 : data_lo[(0*wbone_data_width) +: wbone_data_width];//unchached data is stored in LS 64bits
+      dat_o = mem_cmd_r.header.size == e_bedrock_msg_size_4 ? data_lo[(0*wbone_data_width) +: wbone_data_width] << rd_byte_offset*8 : data_lo[(0*wbone_data_width) +: wbone_data_width];//unchached data is stored in LS 64bits
     end
 
     else
     begin
       mem_cmd_addr_l_zero64 = mem_cmd_addr_l >> 6 << 6;
       {adr_o,throw_away} =  mem_cmd_addr_l_zero64 + (ack_ctr*8);//TODO:careful
-      dat_o = mem_cmd_r.header.size == e_mem_msg_size_4 ? data_lo[(ack_ctr*wbone_data_width) +: wbone_data_width] << rd_byte_offset*8 : data_lo[(ack_ctr*wbone_data_width) +: wbone_data_width];
+      dat_o = mem_cmd_r.header.size == e_bedrock_msg_size_4 ? data_lo[(ack_ctr*wbone_data_width) +: wbone_data_width] << rd_byte_offset*8 : data_lo[(ack_ctr*wbone_data_width) +: wbone_data_width];
      end
   end
 
-   assign we_o = (mem_cmd_r.header.msg_type inside {e_cce_mem_uc_wr, e_cce_mem_wr});
+   assign we_o = (mem_cmd_r.header.msg_type inside {e_bedrock_mem_uc_wr, e_bedrock_mem_wr});
 
 //Data Pass from BP2WB to BP
 
@@ -177,7 +175,7 @@ wire [cce_block_width_p-1:0]  rd_byte_offset = mem_cmd_r.header.addr[0+:3];
 wire [cce_block_width_p-1:0]   wr_byte_shift = rd_byte_offset;
 wire [cce_block_width_p-1:0]    rd_bit_shift = rd_word_offset*64; // We rely on receiver to adjust bits
 
-(* mark_debug = "true" *) wire [cce_block_width_p-1:0] data_li_resp = (mem_cmd_r.header.msg_type == e_cce_mem_uc_rd)
+(* mark_debug = "true" *) wire [cce_block_width_p-1:0] data_li_resp = (mem_cmd_r.header.msg_type == e_bedrock_mem_uc_rd)
                                             ? data_li >> rd_bit_shift
                                             : data_li;
 
@@ -187,6 +185,7 @@ assign mem_resp_cast_o = '{data     : data_li_resp
                                 ,header :'{payload : mem_cmd_r.header.payload
                                 ,size    : mem_cmd_r.header.size
                                 ,addr    : mem_cmd_r.header.addr
+                                ,subop   : mem_cmd_r.header.subop
                                 ,msg_type: mem_cmd_r.header.msg_type
                                 }
                                 };

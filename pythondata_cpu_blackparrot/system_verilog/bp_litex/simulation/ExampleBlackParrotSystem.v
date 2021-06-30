@@ -8,17 +8,13 @@
 
 module ExampleBlackParrotSystem
  import bp_common_pkg::*;
- import bp_common_aviary_pkg::*;
  import bp_be_pkg::*;
- import bp_common_rv64_pkg::*;
- import bp_cce_pkg::*;
  import bp_me_pkg::*;
- import bp_common_cfg_link_pkg::*;
  import bsg_noc_pkg::*;
- #(parameter bp_params_e bp_params_p = e_bp_softcore_no_l2_cfg// e_bp_softcore_cfg
+ #(parameter bp_params_e bp_params_p = e_bp_unicore_no_l2_cfg// e_bp_softcore_cfg
    `declare_bp_proc_params(bp_params_p)
-   `declare_bp_fe_be_if_widths(vaddr_width_p, paddr_width_p, asid_width_p, branch_metadata_fwd_width_p)
-   `declare_bp_me_if_widths(paddr_width_p, cce_block_width_p, lce_id_width_p, lce_assoc_p)
+   `declare_bp_core_if_widths(vaddr_width_p, paddr_width_p, asid_width_p, branch_metadata_fwd_width_p)
+   `declare_bp_bedrock_mem_if_widths(paddr_width_p, cce_block_width_p, lce_id_width_p, lce_assoc_p, cce)
 
    // Tracing parameters
    , parameter calc_trace_p                = 0
@@ -73,7 +69,7 @@ module ExampleBlackParrotSystem
 // , input  [3:0]   interrupts
    );
 
-`declare_bp_me_if(paddr_width_p, cce_block_width_p, lce_id_width_p, lce_assoc_p)
+`declare_bp_bedrock_mem_if(paddr_width_p, cce_block_width_p, lce_id_width_p, lce_assoc_p, cce)
 
 initial begin
   if (num_core_p > 1) begin
@@ -84,37 +80,37 @@ end
 logic [num_core_p-1:0] program_finish_lo;
 logic cosim_finish_lo;
 
-bp_cce_mem_msg_s proc_mem_cmd_lo;
+bp_bedrock_cce_mem_msg_s proc_mem_cmd_lo;
 logic proc_mem_cmd_v_lo, proc_mem_cmd_ready_li;
-bp_cce_mem_msg_s proc_mem_resp_li;
+bp_bedrock_cce_mem_msg_s proc_mem_resp_li;
 logic proc_mem_resp_v_li, proc_mem_resp_yumi_lo;
 
-bp_cce_mem_msg_s proc_io_cmd_lo;
+bp_bedrock_cce_mem_msg_s proc_io_cmd_lo;
 logic proc_io_cmd_v_lo, proc_io_cmd_ready_li;
-bp_cce_mem_msg_s proc_io_resp_li;
+bp_bedrock_cce_mem_msg_s proc_io_resp_li;
 logic proc_io_resp_v_li, proc_io_resp_yumi_lo;
 
-bp_cce_mem_msg_s io_cmd_lo;
+bp_bedrock_cce_mem_msg_s io_cmd_lo;
 logic io_cmd_v_lo, io_cmd_ready_li;
-bp_cce_mem_msg_s io_resp_li;
+bp_bedrock_cce_mem_msg_s io_resp_li;
 logic io_resp_v_li, io_resp_yumi_lo;
 
-bp_cce_mem_msg_s nbf_cmd_lo;
+bp_bedrock_cce_mem_msg_s nbf_cmd_lo;
 logic nbf_cmd_v_lo, nbf_cmd_yumi_li;
-bp_cce_mem_msg_s nbf_resp_li;
+bp_bedrock_cce_mem_msg_s nbf_resp_li;
 logic nbf_resp_v_li, nbf_resp_ready_lo;
 
-bp_cce_mem_msg_s cfg_cmd_lo;
+bp_bedrock_cce_mem_msg_s cfg_cmd_lo;
 logic cfg_cmd_v_lo, cfg_cmd_yumi_li;
-bp_cce_mem_msg_s cfg_resp_li;
+bp_bedrock_cce_mem_msg_s cfg_resp_li;
 logic cfg_resp_v_li, cfg_resp_ready_lo;
 
-bp_cce_mem_msg_s load_cmd_lo;
+bp_bedrock_cce_mem_msg_s load_cmd_lo;
 logic load_cmd_v_lo, load_cmd_yumi_li;
-bp_cce_mem_msg_s load_resp_li;
+bp_bedrock_cce_mem_msg_s load_resp_li;
 logic load_resp_v_li, load_resp_ready_lo;
 
-bp_softcore
+bp_unicore_lite
 #(.bp_params_p(bp_params_p))
  softcore
   (.clk_i(clk_i)
@@ -122,7 +118,7 @@ bp_softcore
 
    ,.io_cmd_o(proc_io_cmd_lo)
    ,.io_cmd_v_o(proc_io_cmd_v_lo)
-   ,.io_cmd_ready_i(proc_io_cmd_ready_li)
+   ,.io_cmd_ready_and_i(proc_io_cmd_ready_li)
 
    ,.io_resp_i(proc_io_resp_li)
    ,.io_resp_v_i(proc_io_resp_v_li)
@@ -134,11 +130,11 @@ bp_softcore
 
    ,.io_resp_o(load_resp_li)
    ,.io_resp_v_o(load_resp_v_li)
-   ,.io_resp_ready_i(load_resp_ready_lo)
+   ,.io_resp_ready_and_i(load_resp_ready_lo)
 
    ,.mem_cmd_o(proc_mem_cmd_lo)
    ,.mem_cmd_v_o(proc_mem_cmd_v_lo)
-   ,.mem_cmd_ready_i(proc_mem_cmd_ready_li)
+   ,.mem_cmd_ready_and_i(proc_mem_cmd_ready_li)
 
    ,.mem_resp_i(proc_mem_resp_li)
    ,.mem_resp_v_i(proc_mem_resp_v_li)
@@ -191,7 +187,7 @@ if (load_nbf_p)
     
        ,.io_resp_i(nbf_resp_li)
        ,.io_resp_v_i(nbf_resp_v_li)
-       ,.io_resp_ready_o(nbf_resp_ready_lo)
+       ,.io_resp_ready_and_o(nbf_resp_ready_lo)
     
        ,.done_o(nbf_done_lo)
        );
@@ -284,7 +280,7 @@ always_comb
    ,.program_finish_o(program_finish_lo)
    );
 */
-bind bp_be_top
+/*bind bp_be_top
   bp_nonsynth_commit_tracer
    #(.bp_params_p(bp_params_p))
    commit_tracer
@@ -303,7 +299,7 @@ bind bp_be_top
      ,.rd_w_v_i(be_checker.scheduler.wb_pkt.rd_w_v)
      ,.rd_addr_i(be_checker.scheduler.wb_pkt.rd_addr)
      ,.rd_data_i(be_checker.scheduler.wb_pkt.rd_data)
-     );
+     );*/
 
 /*  if (num_core_p == 1)
     begin : cosim
@@ -524,7 +520,7 @@ bind bp_be_top
 
      ,.mem_cmd_i(proc_mem_cmd_lo)
      ,.mem_cmd_v_i(proc_mem_cmd_v_lo & proc_mem_cmd_ready_li)
-     ,.mem_cmd_ready_i(proc_mem_cmd_ready_li)
+     ,.mem_cmd_ready_and_i(proc_mem_cmd_ready_li)
 
      ,.mem_resp_i(proc_mem_resp_li)
      ,.mem_resp_v_i(proc_mem_resp_v_li)
