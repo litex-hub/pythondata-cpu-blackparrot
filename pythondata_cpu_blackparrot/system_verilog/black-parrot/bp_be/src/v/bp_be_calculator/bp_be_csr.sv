@@ -198,7 +198,7 @@ module bp_be_csr
   bsg_priority_encode
    #(.width_p($bits(exception_dec_li)), .lo_to_hi_p(1))
    m_interrupt_enc
-    (.i(interrupt_icode_dec_li & ~mideleg_lo[0+:$bits(exception_dec_li)] & $bits(exception_dec_li)'($signed(mgie)))
+    (.i(interrupt_icode_dec_li & ~mideleg_lo[0+:$bits(exception_dec_li)] & $bits(exception_dec_li)'(signed'(mgie)))
      ,.addr_o(m_interrupt_icode_li)
      ,.v_o(m_interrupt_icode_v_li)
      );
@@ -206,7 +206,7 @@ module bp_be_csr
   bsg_priority_encode
    #(.width_p($bits(exception_dec_li)), .lo_to_hi_p(1))
    s_interrupt_enc
-    (.i(interrupt_icode_dec_li & mideleg_lo[0+:$bits(exception_dec_li)] & $bits(exception_dec_li)'($signed(sgie)))
+    (.i(interrupt_icode_dec_li & mideleg_lo[0+:$bits(exception_dec_li)] & $bits(exception_dec_li)'(signed'(sgie)))
      ,.addr_o(s_interrupt_icode_li)
      ,.v_o(s_interrupt_icode_v_li)
      );
@@ -500,7 +500,7 @@ module bp_be_csr
               mstatus_li.mpie      = mstatus_lo.mie;
               mstatus_li.mie       = 1'b0;
 
-              mepc_li              = paddr_width_p'($signed(apc_r));
+              mepc_li              = paddr_width_p'(signed'(apc_r));
               mtval_li             = '0;
               mcause_li._interrupt = 1'b1;
               mcause_li.ecode      = m_interrupt_icode_li;
@@ -515,7 +515,7 @@ module bp_be_csr
               mstatus_li.spie      = mstatus_lo.sie;
               mstatus_li.sie       = 1'b0;
 
-              sepc_li              = paddr_width_p'($signed(apc_r));
+              sepc_li              = paddr_width_p'(signed'(apc_r));
               stval_li             = '0;
               scause_li._interrupt = 1'b1;
               scause_li.ecode      = s_interrupt_icode_li;
@@ -533,10 +533,10 @@ module bp_be_csr
               mstatus_li.spie      = mstatus_lo.sie;
               mstatus_li.sie       = 1'b0;
 
-              sepc_li              = paddr_width_p'($signed(apc_r));
+              sepc_li              = paddr_width_p'(signed'(apc_r));
               stval_li             = (exception_ecode_li == 2)
                                     ? retire_pkt_cast_i.instr
-                                    : paddr_width_p'($signed(retire_pkt_cast_i.vaddr));
+                                    : paddr_width_p'(signed'(retire_pkt_cast_i.vaddr));
 
               scause_li._interrupt = 1'b0;
               scause_li.ecode      = exception_ecode_li;
@@ -551,10 +551,10 @@ module bp_be_csr
               mstatus_li.mpie      = mstatus_lo.mie;
               mstatus_li.mie       = 1'b0;
 
-              mepc_li              = paddr_width_p'($signed(apc_r));
+              mepc_li              = paddr_width_p'(signed'(apc_r));
               mtval_li             = (exception_ecode_li == 2)
                                     ? retire_pkt_cast_i.instr
-                                    : paddr_width_p'($signed(retire_pkt_cast_i.vaddr));
+                                    : paddr_width_p'(signed'(retire_pkt_cast_i.vaddr));
 
               mcause_li._interrupt = 1'b0;
               mcause_li.ecode      = exception_ecode_li;
@@ -566,7 +566,7 @@ module bp_be_csr
       if (retire_pkt_cast_i.special.dbreak)
         begin
           enter_debug    = 1'b1;
-          dpc_li         = paddr_width_p'($signed(apc_r));
+          dpc_li         = paddr_width_p'(signed'(apc_r));
           dcsr_li.cause  = 1; // Ebreak
           dcsr_li.prv    = priv_mode_r;
         end
@@ -601,7 +601,7 @@ module bp_be_csr
       if (~is_debug_mode & retire_pkt_cast_i.queue_v & dcsr_lo.step)
         begin
           enter_debug   = 1'b1;
-          dpc_li        = paddr_width_p'($signed(retire_pkt_cast_i.npc));
+          dpc_li        = paddr_width_p'(signed'(retire_pkt_cast_i.npc));
           dcsr_li.cause = 4;
           dcsr_li.prv   = priv_mode_r;
         end

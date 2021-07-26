@@ -235,9 +235,9 @@ module bp_be_pipe_long
   logic [dword_width_gp-1:0] rd_data_lo;
   always_comb
     if (opw_v_r && fu_op_r inside {e_mul_op_div, e_mul_op_divu})
-      rd_data_lo = $signed(quotient_lo[0+:word_width_gp]);
+      rd_data_lo = signed'(quotient_lo[0+:word_width_gp]);
     else if (opw_v_r && fu_op_r inside {e_mul_op_rem, e_mul_op_remu})
-      rd_data_lo = $signed(remainder_lo) >>> word_width_gp;
+      rd_data_lo = signed'(remainder_lo) >>> word_width_gp;
     else if (~opw_v_r && fu_op_r inside {e_mul_op_div, e_mul_op_divu})
       rd_data_lo = quotient_lo;
     else

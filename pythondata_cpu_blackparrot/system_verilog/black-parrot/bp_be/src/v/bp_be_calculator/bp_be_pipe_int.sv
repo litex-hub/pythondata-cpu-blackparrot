@@ -48,7 +48,7 @@ module bp_be_pipe_int
   wire [dword_width_gp-1:0] imm = reservation.imm[0+:dword_width_gp];
 
   // Sign-extend PC for calculation
-  wire [dword_width_gp-1:0] pc_sext_li = dword_width_gp'($signed(pc));
+  wire [dword_width_gp-1:0] pc_sext_li = dword_width_gp'(signed'(pc));
   wire [dword_width_gp-1:0] pc_plus4   = pc_sext_li + dword_width_gp'(4);
 
   wire [dword_width_gp-1:0] src1  = decode.src1_sel  ? pc_sext_li : rs1;
@@ -71,21 +71,21 @@ module bp_be_pipe_int
       e_int_op_and       : alu_result = final_src1 &   final_src2;
       e_int_op_sll       : alu_result = final_src1 <<  shamt;
       e_int_op_srl       : alu_result = final_src1 >>  shamt;
-      e_int_op_sra       : alu_result = $signed(final_src1) >>> shamt;
+      e_int_op_sra       : alu_result = signed'(final_src1) >>> shamt;
       e_int_op_pass_src2 : alu_result = final_src2;
 
       // Single bit results
       e_int_op_eq   : alu_result = (dword_width_gp)'(final_src1 == final_src2);
       e_int_op_ne   : alu_result = (dword_width_gp)'(final_src1 != final_src2);
-      e_int_op_slt  : alu_result = (dword_width_gp)'($signed(final_src1) <  $signed(final_src2));
+      e_int_op_slt  : alu_result = (dword_width_gp)'(signed'(final_src1) <  signed'(final_src2));
       e_int_op_sltu : alu_result = (dword_width_gp)'(final_src1 <  final_src2);
-      e_int_op_sge  : alu_result = (dword_width_gp)'($signed(final_src1) >= $signed(final_src2));
+      e_int_op_sge  : alu_result = (dword_width_gp)'(signed'(final_src1) >= signed'(final_src2));
       e_int_op_sgeu : alu_result = (dword_width_gp)'(final_src1 >= final_src2);
       default       : alu_result = '0;
     endcase
 
   // Shift back the ALU result from the top field for word width operations
-  wire [dword_width_gp-1:0] opw_result = $signed(alu_result) >>> word_width_gp;
+  wire [dword_width_gp-1:0] opw_result = signed'(alu_result) >>> word_width_gp;
   assign data_o = decode.opw_v ? opw_result : alu_result;
   assign v_o    = reservation.v & reservation.decode.pipe_int_v;
 

@@ -672,9 +672,9 @@ module bp_be_dcache
       {1'b1, e_dcache_subop_amoxor }: atomic_alu_result = atomic_reg_data ^ atomic_mem_data;
       {1'b1, e_dcache_subop_amoadd }: atomic_alu_result = atomic_reg_data + atomic_mem_data;
       {1'b1, e_dcache_subop_amomin }: atomic_alu_result =
-          ($signed(atomic_reg_data) < $signed(atomic_mem_data)) ? atomic_reg_data : atomic_mem_data;
+          (signed'(atomic_reg_data) < signed'(atomic_mem_data)) ? atomic_reg_data : atomic_mem_data;
       {1'b1, e_dcache_subop_amomax }: atomic_alu_result =
-          ($signed(atomic_reg_data) > $signed(atomic_mem_data)) ? atomic_reg_data : atomic_mem_data;
+          (signed'(atomic_reg_data) > signed'(atomic_mem_data)) ? atomic_reg_data : atomic_mem_data;
       {1'b1, e_dcache_subop_amominu}: atomic_alu_result =
           (atomic_reg_data < atomic_mem_data) ? atomic_reg_data : atomic_mem_data;
       {1'b1, e_dcache_subop_amomaxu}: atomic_alu_result =

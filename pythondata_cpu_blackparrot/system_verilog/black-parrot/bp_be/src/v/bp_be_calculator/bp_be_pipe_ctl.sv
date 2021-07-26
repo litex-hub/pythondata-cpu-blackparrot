@@ -55,9 +55,9 @@ module bp_be_pipe_ctl
       case (decode.fu_op)
         e_ctrl_op_beq  : btaken = (rs1 == rs2);
         e_ctrl_op_bne  : btaken = (rs1 != rs2);
-        e_ctrl_op_blt  : btaken = ($signed(rs1) < $signed(rs2));
+        e_ctrl_op_blt  : btaken = (signed'(rs1) < signed'(rs2));
         e_ctrl_op_bltu : btaken = (rs1 < rs2);
-        e_ctrl_op_bge  : btaken = ($signed(rs1) >= $signed(rs2));
+        e_ctrl_op_bge  : btaken = (signed'(rs1) >= signed'(rs2));
         e_ctrl_op_bgeu : btaken = rs1 >= rs2;
         e_ctrl_op_jalr
         ,e_ctrl_op_jal : btaken = 1'b1;
@@ -72,7 +72,7 @@ module bp_be_pipe_ctl
   wire [vaddr_width_p-1:0] taken_tgt = baddr + imm;
   wire [vaddr_width_p-1:0] ntaken_tgt = pc + 4'd4;
 
-  assign data_o   = vaddr_width_p'($signed(ntaken_tgt));
+  assign data_o   = vaddr_width_p'(signed'(ntaken_tgt));
   assign v_o      = reservation.v & reservation.decode.pipe_ctl_v;
 
   assign br_pkt.v         = reservation.v & reservation.queue_v & ~flush_i;
