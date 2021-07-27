@@ -1,8 +1,0 @@
-*.swp
-bsg_defines.v
-*.dump
-*.spike
-*.mem
-*.mainram
-*.bootram
-*.cfg
