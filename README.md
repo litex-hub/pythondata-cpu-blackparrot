@@ -91,3 +91,11 @@ To use a specific revision of the repository, use the following;
 ```
 pip install --user pythondata-cpu-blackparrot
 ```
+
+## Updating BlackParrot
+
+First run `./update.sh`. This removes the old version of BlackParrot,
+downloads the latest development version and applies Litex specific adjustments.
+
+After big version changes it might be necessary to adjust the `flist.fpga`, `flist.verilator` and `bp2wb_convertor.v` in `pythondata_cpu_blackparrot/system_verilog/bp_litex`.
+
