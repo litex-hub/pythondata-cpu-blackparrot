@@ -29,5 +29,15 @@ sed -i "s/wire local_cmd_li        = (proc_cmd_selected_lo.header.addr < dram_ba
 ## Replace $signed with signed' in all files due to Vivado bug for $signed
 find . -type f -exec sed -i 's/\$signed/signed'\''/g' {} +
 
+## Add external dependencies to main repo
+sed -i '/external\//d' $BP/.gitignore
+git rm --cached $BP/external/basejump_stl
+git rm --cached $BP/external/HardFloat
+git rm $BP/.gitmodules
+rm -rf $BP/external/basejump_stl/.git
+rm -rf $BP/external/HardFloat/.git
+git add $BP/external/basejump_stl
+git add $BP/external/HardFloat
+
 ## Output new BlackParrot SHA
 echo "New BlackParrot SHA: $(git rev-parse --short HEAD)"
