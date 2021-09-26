@@ -24,7 +24,7 @@ LITEX_SIMU_DIR=$BP_LITEX_DIR/simulation
 ##Minor changes in some of the BP files for memory management
 sed -i "s/localparam dram_base_addr_gp         = 40'h00_8000_0000;/localparam dram_base_addr_gp         = 40'h00_7000_0000;/" $BP_COMMON_DIR/src/include/bp_common_addr_pkgdef.svh
 sed -i "s/localparam bp_pc_entry_point_gp=39'h10_3000/localparam bp_pc_entry_point_gp=39'h00_7000_0000/" $BP_ME_DIR/test/common/bp_cce_mmio_cfg_loader.sv
-sed -i "s/wire local_cmd_li        = (proc_cmd_selected_lo.header.addr < dram_base_addr_gp);/wire local_cmd_li        = (proc_cmd_selected_lo.header.addr < 32'h5000_0000);/" $BP_TOP_DIR/src/v/bp_unicore_lite.sv
+sed -i "s/wire local_cmd_li        = (proc_cmd_selected_lo.header.addr < dram_base_addr_gp);/wire local_cmd_li        = (proc_cmd_selected_lo.header.addr < 32'h5800_0000);/" $BP_TOP_DIR/src/v/bp_unicore_lite.sv
 
 ## Replace $signed with signed' in all files due to Vivado bug for $signed
 find . -type f -exec sed -i 's/\$signed/signed'\''/g' {} +
